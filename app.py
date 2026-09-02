@@ -160,17 +160,17 @@ if not df_filtrado.empty:
     st.subheader("📄 Información de la solicitud")
     a, b, c = st.columns(3)
     with a:
-        st.markdown(f"**ID_SOLICITUD**  \\n{solicitud['ID_SOLICITUD']}")
-        st.markdown(f"**TÍTULO**  \\n{solicitud['TITULO']}")
-        st.markdown(f"**SUBSERVICIO AFECTADO**  \\n{solicitud['SUBSERVICIO_AFECTADO']}")
+        st.markdown(f"**ID_SOLICITUD**  \n{solicitud['ID_SOLICITUD']}")
+        st.markdown(f"**TÍTULO**  \n{solicitud['TITULO']}")
+        st.markdown(f"**SUBSERVICIO AFECTADO**  \n{solicitud['SUBSERVICIO_AFECTADO']}")
     with b:
-        st.markdown(f"**PRODUCT OWNER**  \\n{solicitud['PRODUCT_OWNER']}")
-        st.markdown(f"**ASIGNADO A**  \\n{solicitud['ASIGNADO_A']}")
-        st.markdown(f"**NOMBRE ASIGNATARIO**  \\n{solicitud['NOMBRE_ASIGNATARIO']}")
+        st.markdown(f"**PRODUCT OWNER**  \n{solicitud['PRODUCT_OWNER']}")
+        st.markdown(f"**ASIGNADO A**  \n{solicitud['ASIGNADO_A']}")
+        st.markdown(f"**NOMBRE ASIGNATARIO**  \n{solicitud['NOMBRE_ASIGNATARIO']}")
     with c:
-        st.markdown(f"**CORREO ASIGNATARIO**  \\n{solicitud['CORREO_ASIGNATARIO']}")
-        st.markdown(f"**ESTADO**  \\n{solicitud['STATUS']}")
-        st.markdown(f"**FECHA APERTURA**  \\n{solicitud['FECHA_APERTURA']}")
+        st.markdown(f"**CORREO ASIGNATARIO**  \n{solicitud['CORREO_ASIGNATARIO']}")
+        st.markdown(f"**ESTADO**  \n{solicitud['STATUS']}")
+        st.markdown(f"**FECHA APERTURA**  \n{solicitud['FECHA_APERTURA']}")
 
     st.divider()
     st.subheader("📜 Historial de gestiones")
