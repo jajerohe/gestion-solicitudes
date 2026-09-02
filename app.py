@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 
 from database import Database
-from excel_web import cargar_excel
+from excel_web import cargar_excel, analizar_excel
 
 
 # ============================================================
@@ -38,44 +38,35 @@ archivo_excel = st.file_uploader(
 )
 
 # ============================================================
-# PROCESAR EXCEL
+# ANALIZAR EXCEL
 # ============================================================
 
 if archivo_excel is not None:
 
     st.info(
-        f"📄 Archivo seleccionado: "
-        f"{archivo_excel.name}"
+        f"📄 Archivo seleccionado: {archivo_excel.name}"
     )
 
-
     if st.button(
-        "🚀 Procesar archivo",
+        "🔎 Analizar archivo",
         type="primary"
     ):
 
-        db = Database()
-
         try:
 
-            db.conectar()
-
-
             with st.spinner(
-                "Procesando archivo Excel..."
+                "Analizando archivo Excel..."
             ):
 
-                resultado = cargar_excel(
-                    archivo_excel,
-                    db
+                df_preview = analizar_excel(
+                    archivo_excel
                 )
 
 
-            db.commit()
-
-
             st.success(
-                "✅ Archivo procesado correctamente."
+                f"✅ Análisis terminado. "
+                f"{len(df_preview)} registro(s) cumplen "
+                f"el filtro de Product Owner."
             )
 
 
@@ -89,59 +80,95 @@ if archivo_excel is not None:
             with col1:
 
                 st.metric(
-                    "Registros generales",
-                    resultado["generales"]
+                    "Registros filtrados",
+                    len(df_preview)
                 )
 
 
             with col2:
 
+                generales = len(
+                    df_preview[
+                        df_preview["HOJA"]
+                        == "DETALLE_GENERAL"
+                    ]
+                )
+
                 st.metric(
-                    "Registros funcionales",
-                    resultado["funcionales"]
+                    "DETALLE_GENERAL",
+                    generales
                 )
 
 
             with col3:
 
-                st.metric(
-                    "Duplicados",
-                    resultado["duplicados"]
+                funcionales = len(
+                    df_preview[
+                        df_preview["HOJA"]
+                        == "DETALLE_FUNCIONALES"
+                    ]
                 )
+
+                st.metric(
+                    "DETALLE_FUNCIONALES",
+                    funcionales
+                )
+
+
+            # ------------------------------------------------
+            # PRODUCT OWNER
+            # ------------------------------------------------
+
+            st.subheader(
+                "👥 Product Owner encontrados"
+            )
+
+
+            if len(df_preview) > 0:
+
+                resumen_po = (
+                    df_preview[
+                        "PRODUCT_OWNER"
+                    ]
+                    .value_counts()
+                    .reset_index()
+                )
+
+                resumen_po.columns = [
+                    "PRODUCT_OWNER",
+                    "CANTIDAD"
+                ]
+
+                st.dataframe(
+                    resumen_po,
+                    use_container_width=True,
+                    hide_index=True
+                )
+
+
+            # ------------------------------------------------
+            # DETALLE
+            # ------------------------------------------------
+
+            st.subheader(
+                "📋 Registros que serían cargados"
+            )
+
+
+            st.dataframe(
+                df_preview,
+                use_container_width=True,
+                hide_index=True
+            )
 
 
         except Exception as e:
 
-            db.rollback()
-
             st.error(
-                "❌ Error procesando el archivo."
+                "❌ Error analizando el archivo."
             )
 
             st.exception(e)
-
-
-        finally:
-
-            db.cerrar()
-
-
-# ============================================================
-# CONEXIÓN
-# ============================================================
-
-db = Database()
-
-try:
-
-    db.conectar()
-
-except Exception as e:
-
-    st.error("❌ No fue posible conectar con Supabase")
-    st.exception(e)
-    st.stop()
-
 
 # ============================================================
 # CARGAR SOLICITUDES
