@@ -3,8 +3,23 @@
 """
 Procesamiento de archivos Excel para la aplicación web.
 
-Migración de la lógica de excel.py de la aplicación de escritorio.
+Este módulo realiza:
+
+1. Lectura de archivos Excel.
+2. Procesamiento de las hojas:
+   - DETALLE_GENERAL
+   - DETALLE_FUNCIONALES
+3. Normalización de columnas.
+4. Validación de columnas obligatorias.
+5. Filtro por Product Owner.
+6. Conversión de fechas.
+7. Preparación de registros.
+8. Análisis previo sin insertar.
+9. Inserción de solicitudes en Supabase.
+10. Control de registros duplicados.
 """
+
+import unicodedata
 
 import pandas as pd
 
@@ -21,12 +36,20 @@ HOJAS = [
 ]
 
 
+# ============================================================
+# PRODUCT OWNER AUTORIZADOS
+# ============================================================
+
 PRODUCT_OWNERS = {
     "ALIRIO GUERRERO PEÑA",
     "DAVID CABAL ORDONEZ",
     "WILLIAM ANTONIO DELGADO PEÑA"
 }
 
+
+# ============================================================
+# COLUMNAS OBLIGATORIAS
+# ============================================================
 
 COLUMNAS_OBLIGATORIAS = {
     "ID_SOLICITUD",
@@ -35,6 +58,10 @@ COLUMNAS_OBLIGATORIAS = {
     "FECHA_APERTURA"
 }
 
+
+# ============================================================
+# COLUMNAS QUE SE INSERTAN EN SOLICITUDES
+# ============================================================
 
 COLUMNAS_SQL = [
     "ORIGEN",
@@ -61,33 +88,126 @@ COLUMNAS_SQL = [
 
 
 # ============================================================
+# NORMALIZAR TEXTO
+# ============================================================
+
+def quitar_acentos(texto):
+
+    """
+    Elimina acentos de un texto.
+
+    Ejemplo:
+
+    DifDías
+    ↓
+    DifDias
+    """
+
+    texto = unicodedata.normalize(
+        "NFKD",
+        str(texto)
+    )
+
+    return "".join(
+        caracter
+        for caracter in texto
+        if not unicodedata.combining(caracter)
+    )
+
+
+# ============================================================
+# NORMALIZAR NOMBRE DE COLUMNA
+# ============================================================
+
+def normalizar_nombre_columna(nombre):
+
+    nombre = str(nombre).strip()
+
+    nombre = quitar_acentos(nombre)
+
+    nombre = nombre.upper()
+
+    nombre = (
+        nombre
+        .replace(" ", "_")
+        .replace("/", "_")
+        .replace("-", "_")
+    )
+
+    # Eliminar posibles dobles guiones bajos
+
+    while "__" in nombre:
+
+        nombre = nombre.replace(
+            "__",
+            "_"
+        )
+
+    return nombre
+
+
+# ============================================================
 # NORMALIZAR COLUMNAS
 # ============================================================
 
 def normalizar_columnas(df):
 
-    df.columns = (
-        df.columns
-        .astype(str)
-        .str.strip()
-        .str.upper()
-        .str.replace(" ", "_", regex=False)
-        .str.replace("/", "_", regex=False)
-        .str.replace("-", "_", regex=False)
-    )
+    """
+    Normaliza los nombres de las columnas del Excel.
 
-    # Adaptar nombres específicos del Excel real
+    Ejemplos:
+
+    Product Owner
+        ↓
+    PRODUCT_OWNER
+
+    RangTiempo
+        ↓
+    RANGTIEMPO
+
+    Suma de DifDías
+        ↓
+    SUMA_DE_DIFDIAS
+        ↓
+    DIFDIAS
+    """
+
+    df = df.copy()
+
+    # --------------------------------------------------------
+    # Normalizar nombres
+    # --------------------------------------------------------
+
+    df.columns = [
+        normalizar_nombre_columna(columna)
+        for columna in df.columns
+    ]
+
+
+    # --------------------------------------------------------
+    # Equivalencias del Excel real
+    # --------------------------------------------------------
+
     equivalencias = {
-        "SUMA_DE_DÍAS": "DIFDIAS",
-        "SUMA_DE_DIAS": "DIFDIAS",
-        "SUMA_DE_DIFDÍAS": "DIFDIAS",
-        "SUMA_DE_DIFDIAS": "DIFDIAS",
-        "RANGTIEMPO": "RANGTIEMPO",
+
+        "SUMA_DE_DIFDIAS":
+            "DIFDIAS",
+
+        "SUMA_DE_DIAS":
+            "DIFDIAS",
+
+        "DIFDIAS":
+            "DIFDIAS",
+
+        "RANGTIEMPO":
+            "RANGTIEMPO"
     }
+
 
     df = df.rename(
         columns=equivalencias
     )
+
 
     return df
 
@@ -98,16 +218,24 @@ def normalizar_columnas(df):
 
 def validar_columnas(df):
 
+    """
+    Valida que el Excel contenga las columnas mínimas
+    necesarias para procesar solicitudes.
+    """
+
     faltantes = (
         COLUMNAS_OBLIGATORIAS
         - set(df.columns)
     )
 
+
     if faltantes:
 
         raise ValueError(
             "Columnas obligatorias faltantes: "
-            + ", ".join(sorted(faltantes))
+            + ", ".join(
+                sorted(faltantes)
+            )
         )
 
 
@@ -117,23 +245,63 @@ def validar_columnas(df):
 
 def limpiar_valor(valor):
 
+    """
+    Convierte valores de pandas a valores compatibles
+    con PostgreSQL.
+    """
+
+    # --------------------------------------------------------
+    # Valores nulos
+    # --------------------------------------------------------
+
     if pd.isna(valor):
 
         return None
 
-    if hasattr(valor, "to_pydatetime"):
+
+    # --------------------------------------------------------
+    # Timestamp de pandas
+    # --------------------------------------------------------
+
+    if isinstance(
+        valor,
+        pd.Timestamp
+    ):
 
         return valor.to_pydatetime()
 
-    if isinstance(valor, str):
+
+    # --------------------------------------------------------
+    # Fechas de Python
+    # --------------------------------------------------------
+
+    if hasattr(
+        valor,
+        "to_pydatetime"
+    ):
+
+        return valor.to_pydatetime()
+
+
+    # --------------------------------------------------------
+    # Texto
+    # --------------------------------------------------------
+
+    if isinstance(
+        valor,
+        str
+    ):
 
         valor = valor.strip()
+
 
         if valor == "":
 
             return None
 
+
         return valor
+
 
     return valor
 
@@ -142,34 +310,59 @@ def limpiar_valor(valor):
 # PROCESAR HOJA
 # ============================================================
 
-def procesar_hoja(df, hoja):
+def procesar_hoja(
+    df,
+    hoja
+):
+
+    """
+    Procesa una hoja individual del Excel.
+
+    Aplica:
+
+    - Normalización.
+    - Validación.
+    - Filtro Product Owner.
+    - Conversión de fechas.
+    """
+
+    df = df.copy()
+
 
     # --------------------------------------------------------
     # Normalizar columnas
     # --------------------------------------------------------
 
-    df = normalizar_columnas(df)
+    df = normalizar_columnas(
+        df
+    )
+
 
     # --------------------------------------------------------
-    # Validar columnas obligatorias
+    # Validar columnas
     # --------------------------------------------------------
 
-    validar_columnas(df)
+    validar_columnas(
+        df
+    )
+
 
     # --------------------------------------------------------
     # Normalizar Product Owner
     # --------------------------------------------------------
 
     df["PRODUCT_OWNER"] = (
+
         df["PRODUCT_OWNER"]
         .fillna("")
         .astype(str)
-        .str.upper()
         .str.strip()
+        .str.upper()
     )
 
+
     # --------------------------------------------------------
-    # Filtrar Product Owner autorizados
+    # Filtrar Product Owner
     # --------------------------------------------------------
 
     df = df[
@@ -178,21 +371,38 @@ def procesar_hoja(df, hoja):
         )
     ].copy()
 
+
     # --------------------------------------------------------
     # Convertir fechas
     # --------------------------------------------------------
 
-    for campo in [
-        "FECHA_APERTURA",
-        "FECHA_CIERRE"
-    ]:
+    if "FECHA_APERTURA" in df.columns:
 
-        if campo in df.columns:
+        df["FECHA_APERTURA"] = pd.to_datetime(
+            df["FECHA_APERTURA"],
+            errors="coerce"
+        )
 
-            df[campo] = pd.to_datetime(
-                df[campo],
-                errors="coerce"
-            )
+
+    if "FECHA_CIERRE" in df.columns:
+
+        df["FECHA_CIERRE"] = pd.to_datetime(
+            df["FECHA_CIERRE"],
+            errors="coerce"
+        )
+
+
+    # --------------------------------------------------------
+    # Convertir DIFDIAS
+    # --------------------------------------------------------
+
+    if "DIFDIAS" in df.columns:
+
+        df["DIFDIAS"] = pd.to_numeric(
+            df["DIFDIAS"],
+            errors="coerce"
+        )
+
 
     return df
 
@@ -201,11 +411,21 @@ def procesar_hoja(df, hoja):
 # PREPARAR REGISTRO
 # ============================================================
 
-def preparar_registro(fila, hoja):
+def preparar_registro(
+    fila,
+    hoja
+):
+
+    """
+    Convierte una fila del DataFrame en una tupla
+    compatible con INSERT de PostgreSQL.
+    """
 
     valores = []
 
+
     for columna in COLUMNAS_SQL:
+
 
         # ----------------------------------------------------
         # ORIGEN
@@ -213,9 +433,12 @@ def preparar_registro(fila, hoja):
 
         if columna == "ORIGEN":
 
-            valores.append(hoja)
+            valores.append(
+                hoja
+            )
 
             continue
+
 
         # ----------------------------------------------------
         # CURRENT_PHASE
@@ -223,12 +446,15 @@ def preparar_registro(fila, hoja):
 
         if columna == "CURRENT_PHASE":
 
-            valores.append(None)
+            valores.append(
+                None
+            )
 
             continue
 
+
         # ----------------------------------------------------
-        # Obtener valor
+        # Obtener valor de la fila
         # ----------------------------------------------------
 
         if columna in fila.index:
@@ -239,40 +465,63 @@ def preparar_registro(fila, hoja):
 
             valor = None
 
-        valor = limpiar_valor(valor)
 
-        valores.append(valor)
+        # ----------------------------------------------------
+        # Limpiar
+        # ----------------------------------------------------
 
-    return tuple(valores)
+        valor = limpiar_valor(
+            valor
+        )
+
+
+        valores.append(
+            valor
+        )
+
+
+    return tuple(
+        valores
+    )
 
 
 # ============================================================
-# CARGAR ARCHIVO
+# ANALIZAR EXCEL SIN INSERTAR
 # ============================================================
 
-def cargar_excel(archivo, db):
+def analizar_excel(
+    archivo
+):
 
-    resultados = {
-        "generales": 0,
-        "funcionales": 0,
-        "duplicados": 0,
-        "errores": 0,
-        "hojas": []
-    }
+    """
+    Analiza el archivo Excel sin modificar Supabase.
 
+    Devuelve únicamente los registros que cumplen
+    el filtro de Product Owner.
+    """
 
-    # ========================================================
-    # LEER EXCEL
-    # ========================================================
-
-    excel = pd.ExcelFile(archivo)
+    resultados = []
 
 
     # ========================================================
-    # RECORRER HOJAS
+    # LEER ARCHIVO
+    # ========================================================
+
+    excel = pd.ExcelFile(
+        archivo
+    )
+
+
+    # ========================================================
+    # PROCESAR HOJAS
     # ========================================================
 
     for hoja in HOJAS:
+
+
+        # ----------------------------------------------------
+        # Verificar existencia de hoja
+        # ----------------------------------------------------
 
         if hoja not in excel.sheet_names:
 
@@ -299,9 +548,167 @@ def cargar_excel(archivo, db):
         )
 
 
+        # ----------------------------------------------------
+        # Crear resultado de análisis
+        # ----------------------------------------------------
+
+        for _, fila in df.iterrows():
+
+            resultados.append({
+
+                "HOJA":
+                    hoja,
+
+                "ID_SOLICITUD":
+                    limpiar_valor(
+                        fila.get(
+                            "ID_SOLICITUD"
+                        )
+                    ),
+
+                "PRODUCT_OWNER":
+                    limpiar_valor(
+                        fila.get(
+                            "PRODUCT_OWNER"
+                        )
+                    ),
+
+                "STATUS":
+                    limpiar_valor(
+                        fila.get(
+                            "STATUS"
+                        )
+                    ),
+
+                "FECHA_APERTURA":
+                    limpiar_valor(
+                        fila.get(
+                            "FECHA_APERTURA"
+                        )
+                    ),
+
+                "TITULO":
+                    limpiar_valor(
+                        fila.get(
+                            "TITULO"
+                        )
+                    ),
+
+                "RANGTIEMPO":
+                    limpiar_valor(
+                        fila.get(
+                            "RANGTIEMPO"
+                        )
+                    ),
+
+                "DIFDIAS":
+                    limpiar_valor(
+                        fila.get(
+                            "DIFDIAS"
+                        )
+                    )
+            })
+
+
+    # ========================================================
+    # DATAFRAME RESULTADO
+    # ========================================================
+
+    return pd.DataFrame(
+        resultados
+    )
+
+
+# ============================================================
+# CARGAR EXCEL A SUPABASE
+# ============================================================
+
+def cargar_excel(
+    archivo,
+    db
+):
+
+    """
+    Procesa e inserta el Excel en Supabase.
+
+    Los duplicados por ID_SOLICITUD se ignoran.
+    """
+
+    resultados = {
+
+        "generales":
+            0,
+
+        "funcionales":
+            0,
+
+        "duplicados":
+            0,
+
+        "errores":
+            0,
+
+        "hojas":
+            []
+    }
+
+
+    # ========================================================
+    # LEER EXCEL
+    # ========================================================
+
+    excel = pd.ExcelFile(
+        archivo
+    )
+
+
+    # ========================================================
+    # RECORRER HOJAS
+    # ========================================================
+
+    for hoja in HOJAS:
+
+
+        # ----------------------------------------------------
+        # Verificar hoja
+        # ----------------------------------------------------
+
+        if hoja not in excel.sheet_names:
+
+            continue
+
+
+        # ----------------------------------------------------
+        # Leer hoja
+        # ----------------------------------------------------
+
+        df = pd.read_excel(
+            excel,
+            sheet_name=hoja
+        )
+
+
+        # ----------------------------------------------------
+        # Procesar
+        # ----------------------------------------------------
+
+        df = procesar_hoja(
+            df,
+            hoja
+        )
+
+
+        # ----------------------------------------------------
+        # Registrar resumen
+        # ----------------------------------------------------
+
         resultados["hojas"].append({
-            "hoja": hoja,
-            "registros": len(df)
+
+            "hoja":
+                hoja,
+
+            "registros":
+                len(df)
         })
 
 
@@ -310,6 +717,7 @@ def cargar_excel(archivo, db):
         # ----------------------------------------------------
 
         for _, fila in df.iterrows():
+
 
             valores = preparar_registro(
                 fila,
@@ -341,11 +749,28 @@ def cargar_excel(archivo, db):
                     "PRODUCT_OWNER",
                     "DIFDIAS"
                 )
-                VALUES (
-                    %s, %s, %s, %s, %s,
-                    %s, %s, %s, %s, %s,
-                    %s, %s, %s, %s, %s,
-                    %s, %s, %s, %s, %s
+                VALUES
+                (
+                    %s,
+                    %s,
+                    %s,
+                    %s,
+                    %s,
+                    %s,
+                    %s,
+                    %s,
+                    %s,
+                    %s,
+                    %s,
+                    %s,
+                    %s,
+                    %s,
+                    %s,
+                    %s,
+                    %s,
+                    %s,
+                    %s,
+                    %s
                 )
                 ON CONFLICT ("ID_SOLICITUD")
                 DO NOTHING
@@ -353,68 +778,54 @@ def cargar_excel(archivo, db):
             """
 
 
-            db.execute(
-                sql,
-                valores
-            )
+            try:
+
+                db.execute(
+                    sql,
+                    valores
+                )
 
 
-            insertado = db.fetchone()
+                insertado = db.fetchone()
 
 
-            if insertado:
+                # ------------------------------------------------
+                # Registro nuevo
+                # ------------------------------------------------
 
-                if hoja == "DETALLE_GENERAL":
+                if insertado:
 
-                    resultados["generales"] += 1
+                    if hoja == "DETALLE_GENERAL":
+
+                        resultados[
+                            "generales"
+                        ] += 1
+
+                    elif hoja == "DETALLE_FUNCIONALES":
+
+                        resultados[
+                            "funcionales"
+                        ] += 1
+
+
+                # ------------------------------------------------
+                # Registro duplicado
+                # ------------------------------------------------
 
                 else:
 
-                    resultados["funcionales"] += 1
+                    resultados[
+                        "duplicados"
+                    ] += 1
 
-            else:
 
-                resultados["duplicados"] += 1
+            except Exception:
+
+                resultados[
+                    "errores"
+                ] += 1
+
+                raise
 
 
     return resultados
-
-# ============================================================
-# ANALIZAR EXCEL SIN INSERTAR
-# ============================================================
-
-def analizar_excel(archivo):
-
-    resultados = []
-
-    excel = pd.ExcelFile(archivo)
-
-    for hoja in HOJAS:
-
-        if hoja not in excel.sheet_names:
-            continue
-
-        df = pd.read_excel(
-            excel,
-            sheet_name=hoja
-        )
-
-        df = procesar_hoja(
-            df,
-            hoja
-        )
-
-        for _, fila in df.iterrows():
-
-            resultados.append({
-                "HOJA": hoja,
-                "ID_SOLICITUD": fila.get("ID_SOLICITUD"),
-                "PRODUCT_OWNER": fila.get("PRODUCT_OWNER"),
-                "STATUS": fila.get("STATUS"),
-                "FECHA_APERTURA": fila.get("FECHA_APERTURA"),
-                "TITULO": fila.get("TITULO"),
-                "RANGTIEMPO": fila.get("RANGTIEMPO"),
-                "DIFDIAS": fila.get("DIFDIAS")
-            })
-
-    return pd.DataFrame(resultados)
