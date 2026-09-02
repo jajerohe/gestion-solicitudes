@@ -53,7 +53,9 @@ sql_solicitudes = """
         "STATUS",
         "ASIGNADO_A",
         "NOMBRE_ASIGNATARIO",
-        "CORREO_ASIGNATARIO"
+        "CORREO_ASIGNATARIO",
+        "FECHA_CIERRE",
+        "CODIGO_CIERRE"
     FROM public."Solicitudes"
     WHERE "STATUS" NOT IN ('RESOLVED', 'COMPLETADO')
       AND "FECHA_CIERRE" IS NULL
@@ -93,7 +95,9 @@ columnas = [
     "STATUS",
     "ASIGNADO_A",
     "NOMBRE_ASIGNATARIO",
-    "CORREO_ASIGNATARIO"
+    "CORREO_ASIGNATARIO",
+    "FECHA_CIERRE",
+    "CODIGO_CIERRE"
 ]
 
 
@@ -511,6 +515,236 @@ if len(df_filtrado) > 0:
 
         st.rerun()
 
+    # ========================================================
+    # ACTUALIZAR SOLICITUD
+    # ========================================================
+
+    st.divider()
+
+    st.subheader("⚙️ Actualizar solicitud")
+
+
+    estados = [
+        "Cancelled",
+        "Completado",
+        "En curso",
+        "Fulfilled",
+        "In Progress",
+        "Pendiente de cliente",
+        "Pendiente de proveedor",
+        "Resuelto",
+        "Suspendido",
+        "Trabajo en curso"
+    ]
+
+
+    codigos_cierre = [
+        "Cancelado por incumplimiento de politicas",
+        "Cancelado por el usuario",
+        "Resuelto por soporte tecnico"
+    ]
+
+
+    # --------------------------------------------------------
+    # VALORES ACTUALES
+    # --------------------------------------------------------
+
+    status_actual = solicitud["STATUS"]
+
+    codigo_actual = solicitud["CODIGO_CIERRE"]
+
+    fecha_cierre_actual = solicitud["FECHA_CIERRE"]
+
+
+    # --------------------------------------------------------
+    # FORMULARIO
+    # --------------------------------------------------------
+
+    with st.form("form_actualizar_solicitud"):
+
+        col1, col2 = st.columns(2)
+
+
+        with col1:
+
+            status_opciones = [""] + estados
+
+            indice_status = 0
+
+            if status_actual in estados:
+
+                indice_status = (
+                    status_opciones.index(status_actual)
+                )
+
+
+            nuevo_status = st.selectbox(
+                "Estado",
+                status_opciones,
+                index=indice_status
+            )
+
+
+        with col2:
+
+            codigo_opciones = [""] + codigos_cierre
+
+            indice_codigo = 0
+
+            if codigo_actual in codigos_cierre:
+
+                indice_codigo = (
+                    codigo_opciones.index(codigo_actual)
+                )
+
+
+            nuevo_codigo = st.selectbox(
+                "Código de cierre",
+                codigo_opciones,
+                index=indice_codigo
+            )
+
+
+        # ----------------------------------------------------
+        # FECHA DE CIERRE
+        # ----------------------------------------------------
+
+        if pd.notna(fecha_cierre_actual):
+
+            fecha_texto_actual = pd.to_datetime(
+                fecha_cierre_actual
+            ).strftime(
+                "%Y-%m-%d %H:%M:%S"
+            )
+
+        else:
+
+            fecha_texto_actual = ""
+
+
+        fecha_cierre = st.text_input(
+            "Fecha de cierre",
+            value=fecha_texto_actual,
+            placeholder="YYYY-MM-DD HH:MM:SS"
+        )
+
+
+        actualizar = st.form_submit_button(
+            "🔄 Actualizar Solicitud"
+        )
+
+
+    # ========================================================
+    # PROCESAR ACTUALIZACIÓN
+    # ========================================================
+
+    if actualizar:
+
+        # ----------------------------------------------------
+        # VALIDAR FECHA
+        # ----------------------------------------------------
+
+        fecha_cierre_limpia = fecha_cierre.strip()
+
+
+        if fecha_cierre_limpia == "":
+
+            fecha_cierre_db = None
+
+        else:
+
+            try:
+
+                fecha_cierre_db = pd.to_datetime(
+                    fecha_cierre_limpia
+                ).to_pydatetime()
+
+            except Exception:
+
+                st.warning(
+                    "⚠️ La fecha de cierre debe tener el formato "
+                    "YYYY-MM-DD HH:MM:SS"
+                )
+
+                st.stop()
+
+
+        # ----------------------------------------------------
+        # PREPARAR VALORES
+        # ----------------------------------------------------
+
+        status_db = (
+            nuevo_status
+            if nuevo_status
+            else None
+        )
+
+
+        codigo_db = (
+            nuevo_codigo
+            if nuevo_codigo
+            else None
+        )
+
+
+        # ----------------------------------------------------
+        # CONECTAR
+        # ----------------------------------------------------
+
+        db = Database()
+
+
+        try:
+
+            db.conectar()
+
+
+            sql_update = """
+                UPDATE public."Solicitudes"
+                SET
+                    "FECHA_CIERRE" = %s,
+                    "STATUS" = %s,
+                    "CODIGO_CIERRE" = %s
+                WHERE "ID_SOLICITUD" = %s
+            """
+
+
+            db.execute(
+                sql_update,
+                (
+                    fecha_cierre_db,
+                    status_db,
+                    codigo_db,
+                    id_seleccionado
+                )
+            )
+
+
+            db.commit()
+
+
+            st.success(
+                "✅ La solicitud fue actualizada correctamente."
+            )
+
+
+        except Exception as e:
+
+            db.rollback()
+
+            st.error(
+                "❌ No fue posible actualizar la solicitud."
+            )
+
+            st.exception(e)
+
+
+        finally:
+
+            db.cerrar()
+
+
+        st.rerun()
 
 else:
 
