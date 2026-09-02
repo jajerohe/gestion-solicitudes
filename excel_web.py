@@ -76,6 +76,19 @@ def normalizar_columnas(df):
         .str.replace("-", "_", regex=False)
     )
 
+    # Adaptar nombres específicos del Excel real
+    equivalencias = {
+        "SUMA_DE_DÍAS": "DIFDIAS",
+        "SUMA_DE_DIAS": "DIFDIAS",
+        "SUMA_DE_DIFDÍAS": "DIFDIAS",
+        "SUMA_DE_DIFDIAS": "DIFDIAS",
+        "RANGTIEMPO": "RANGTIEMPO",
+    }
+
+    df = df.rename(
+        columns=equivalencias
+    )
+
     return df
 
 
