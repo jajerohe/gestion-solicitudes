@@ -6,10 +6,6 @@ Conexión a PostgreSQL / Supabase
 
 import streamlit as st
 import psycopg
-from logger import configurar_logger
-
-
-logger = configurar_logger()
 
 
 class Database:
@@ -26,8 +22,6 @@ class Database:
 
         try:
 
-            logger.info("Conectando a Supabase PostgreSQL...")
-
             self.conn = psycopg.connect(
                 host=st.secrets["database"]["host"],
                 port=st.secrets["database"]["port"],
@@ -40,15 +34,9 @@ class Database:
 
             self.cursor = self.conn.cursor()
 
-            logger.info("Conexión a Supabase establecida.")
-
             return self.cursor
 
         except Exception as ex:
-
-            logger.exception(
-                "Error conectando a Supabase PostgreSQL"
-            )
 
             raise ex
 
@@ -92,8 +80,6 @@ class Database:
         except Exception:
             pass
 
-        logger.info("Conexión cerrada.")
-
     # ======================================================
     # EJECUTAR CONSULTA
     # ======================================================
@@ -102,6 +88,7 @@ class Database:
 
         if parametros is None:
             self.cursor.execute(sql)
+
         else:
             self.cursor.execute(sql, parametros)
 
