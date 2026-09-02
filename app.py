@@ -206,7 +206,7 @@ if not df_filtrado.empty:
                 "Hora de gestión 🕐",
                 value=ahora.time().replace(microsecond=0),
                 step=1,
-                format="HH:mm:ss"
+                format="24h"
             )
 
         observacion = st.text_area(
@@ -318,7 +318,7 @@ if not df_filtrado.empty:
                 "Hora de cierre 🕐",
                 value=fecha_cierre_inicial.time().replace(microsecond=0),
                 step=1,
-                format="HH:mm:ss"
+                format="24h"
             )
 
         actualizar = st.form_submit_button("🔄 Actualizar Solicitud")
