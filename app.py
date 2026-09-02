@@ -203,9 +203,10 @@ if not df_filtrado.empty:
 
         with c_hora:
             hora_seleccionada = st.time_input(
-                "Hora de gestión",
+                "Hora de gestión 🕐",
                 value=ahora.time().replace(microsecond=0),
-                step=1
+                step=1,
+                format="HH:mm:ss"
             )
 
         observacion = st.text_area(
@@ -314,9 +315,10 @@ if not df_filtrado.empty:
 
         with c_hora:
             fecha_cierre_hora = st.time_input(
-                "Hora de cierre",
+                "Hora de cierre 🕐",
                 value=fecha_cierre_inicial.time().replace(microsecond=0),
-                step=1
+                step=1,
+                format="HH:mm:ss"
             )
 
         actualizar = st.form_submit_button("🔄 Actualizar Solicitud")
