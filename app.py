@@ -4,7 +4,7 @@ from database import Database
 
 
 st.set_page_config(
-    page_title="Gestión de Solicitudes",
+    page_title="Gestión de Solicitudes - ECP",
     page_icon="📋",
     layout="wide"
 )
