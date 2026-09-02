@@ -378,3 +378,43 @@ def cargar_excel(archivo, db):
 
 
     return resultados
+
+# ============================================================
+# ANALIZAR EXCEL SIN INSERTAR
+# ============================================================
+
+def analizar_excel(archivo):
+
+    resultados = []
+
+    excel = pd.ExcelFile(archivo)
+
+    for hoja in HOJAS:
+
+        if hoja not in excel.sheet_names:
+            continue
+
+        df = pd.read_excel(
+            excel,
+            sheet_name=hoja
+        )
+
+        df = procesar_hoja(
+            df,
+            hoja
+        )
+
+        for _, fila in df.iterrows():
+
+            resultados.append({
+                "HOJA": hoja,
+                "ID_SOLICITUD": fila.get("ID_SOLICITUD"),
+                "PRODUCT_OWNER": fila.get("PRODUCT_OWNER"),
+                "STATUS": fila.get("STATUS"),
+                "FECHA_APERTURA": fila.get("FECHA_APERTURA"),
+                "TITULO": fila.get("TITULO"),
+                "RANGTIEMPO": fila.get("RANGTIEMPO"),
+                "DIFDIAS": fila.get("DIFDIAS")
+            })
+
+    return pd.DataFrame(resultados)
