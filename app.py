@@ -19,7 +19,7 @@ st.set_page_config(
 # TÍTULO
 # ============================================================
 
-st.title("📋 Gestión de Solicitudes")
+st.title("📋 Gestión de Solicitudes - ECP")
 
 
 # ============================================================
@@ -306,7 +306,7 @@ if len(df_filtrado) > 0:
         db.cerrar()
 
 
-    # ========================================================
+        # ========================================================
     # MOSTRAR HISTORIAL
     # ========================================================
 
@@ -321,7 +321,6 @@ if len(df_filtrado) > 0:
             ]
         )
 
-
         st.dataframe(
             df_gestiones,
             use_container_width=True,
@@ -334,6 +333,183 @@ if len(df_filtrado) > 0:
             "ℹ️ No existen gestiones registradas "
             "para esta solicitud."
         )
+
+
+    # ========================================================
+    # NUEVA GESTIÓN
+    # ========================================================
+
+    st.divider()
+
+    st.subheader("📝 Nueva gestión")
+
+
+    with st.form("form_gestion"):
+
+        fecha_gestion = st.text_input(
+            "Fecha de gestión",
+            value=pd.Timestamp.now().strftime(
+                "%Y-%m-%d %H:%M:%S"
+            )
+        )
+
+
+        observacion = st.text_area(
+            "Observación",
+            placeholder="Digite la observación de la gestión...",
+            height=150
+        )
+
+
+        guardar = st.form_submit_button(
+            "💾 Guardar Gestión"
+        )
+
+
+    # ========================================================
+    # GUARDAR GESTIÓN
+    # ========================================================
+
+    if guardar:
+
+        observacion = observacion.strip()
+
+
+        # ----------------------------------------------------
+        # VALIDAR OBSERVACIÓN
+        # ----------------------------------------------------
+
+        if not observacion:
+
+            st.warning(
+                "⚠️ Debe ingresar una observación."
+            )
+
+            st.stop()
+
+
+        # ----------------------------------------------------
+        # VALIDAR FECHA
+        # ----------------------------------------------------
+
+        try:
+
+            fecha = pd.to_datetime(
+                fecha_gestion
+            ).to_pydatetime()
+
+        except Exception:
+
+            st.error(
+                "❌ La fecha no tiene un formato válido."
+            )
+
+            st.stop()
+
+
+        # ----------------------------------------------------
+        # CONECTAR
+        # ----------------------------------------------------
+
+        db = Database()
+
+
+        try:
+
+            db.conectar()
+
+
+            # ------------------------------------------------
+            # VALIDAR DUPLICADO
+            # ------------------------------------------------
+
+            sql_duplicado = """
+                SELECT 1
+                FROM public."Gestiones"
+                WHERE "ID_SOLICITUD" = %s
+                  AND "OBSERVACION" = %s
+                LIMIT 1
+            """
+
+
+            db.execute(
+                sql_duplicado,
+                (
+                    id_seleccionado,
+                    observacion
+                )
+            )
+
+
+            duplicado = db.fetchone()
+
+
+            if duplicado:
+
+                st.warning(
+                    "⚠️ Esta observación ya existe "
+                    "para esta solicitud."
+                )
+
+                db.cerrar()
+
+                st.stop()
+
+
+            # ------------------------------------------------
+            # INSERTAR GESTIÓN
+            # ------------------------------------------------
+
+            sql_insert = """
+                INSERT INTO public."Gestiones"
+                (
+                    "FECHA_GESTION",
+                    "ID_SOLICITUD",
+                    "OBSERVACION"
+                )
+                VALUES (%s, %s, %s)
+            """
+
+
+            db.execute(
+                sql_insert,
+                (
+                    fecha,
+                    id_seleccionado,
+                    observacion
+                )
+            )
+
+
+            db.commit()
+
+
+            st.success(
+                "✅ Gestión guardada correctamente."
+            )
+
+
+        except Exception as e:
+
+            db.rollback()
+
+            st.error(
+                "❌ No fue posible guardar la gestión."
+            )
+
+            st.exception(e)
+
+
+        finally:
+
+            db.cerrar()
+
+
+        # ----------------------------------------------------
+        # RECARGAR PÁGINA
+        # ----------------------------------------------------
+
+        st.rerun()
 
 
 else:
