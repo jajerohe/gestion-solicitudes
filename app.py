@@ -187,10 +187,27 @@ if not df_filtrado.empty:
     st.divider()
     st.subheader("📝 Nueva gestión")
     with st.form("form_gestion"):
-        fecha_gestion = st.text_input(
-            "Fecha de gestión",
-            value=pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S")
-        )
+        # Selector visual de fecha y hora.
+        # La fecha se selecciona mediante calendario y la hora mediante
+        # un control independiente de hora/minutos/segundos.
+        ahora = pd.Timestamp.now()
+
+        c_fecha, c_hora = st.columns(2)
+
+        with c_fecha:
+            fecha_seleccionada = st.date_input(
+                "Fecha de gestión",
+                value=ahora.date(),
+                format="DD/MM/YYYY"
+            )
+
+        with c_hora:
+            hora_seleccionada = st.time_input(
+                "Hora de gestión",
+                value=ahora.time().replace(microsecond=0),
+                step=1
+            )
+
         observacion = st.text_area(
             "Observación",
             placeholder="Digite la observación de la gestión...",
@@ -205,9 +222,13 @@ if not df_filtrado.empty:
             st.stop()
 
         try:
-            fecha = pd.to_datetime(fecha_gestion).to_pydatetime()
+            # Combinar la fecha seleccionada en el calendario con la hora.
+            fecha = pd.Timestamp.combine(
+                fecha_seleccionada,
+                hora_seleccionada
+            ).to_pydatetime()
         except Exception:
-            st.error("❌ La fecha no tiene un formato válido.")
+            st.error("❌ La fecha y hora no tienen un formato válido.")
             st.stop()
 
         db = Database()
