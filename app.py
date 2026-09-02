@@ -288,6 +288,14 @@ if not df_filtrado.empty:
         if pd.notna(fecha_actual) else ""
     )
 
+    # Valores iniciales para el selector de fecha/hora.
+    if fecha_texto:
+        fecha_cierre_inicial = pd.to_datetime(fecha_texto)
+        tiene_fecha_cierre = True
+    else:
+        fecha_cierre_inicial = pd.Timestamp.now()
+        tiene_fecha_cierre = False
+
     with st.form("form_actualizar"):
         a, b = st.columns(2)
         with a:
@@ -295,19 +303,39 @@ if not df_filtrado.empty:
         with b:
             nuevo_codigo = st.selectbox("Código de cierre", codigo_opciones, index=i_codigo)
 
-        fecha_cierre = st.text_input(
-            "Fecha de cierre",
-            value=fecha_texto,
-            placeholder="YYYY-MM-DD HH:MM:SS"
+        registrar_fecha_cierre = st.checkbox(
+            "📅 Registrar fecha de cierre",
+            value=tiene_fecha_cierre
         )
+
+        if registrar_fecha_cierre:
+            c_fecha, c_hora = st.columns(2)
+
+            with c_fecha:
+                fecha_cierre_fecha = st.date_input(
+                    "Fecha de cierre",
+                    value=fecha_cierre_inicial.date(),
+                    format="DD/MM/YYYY"
+                )
+
+            with c_hora:
+                fecha_cierre_hora = st.time_input(
+                    "Hora de cierre",
+                    value=fecha_cierre_inicial.time().replace(microsecond=0),
+                    step=1
+                )
+
         actualizar = st.form_submit_button("🔄 Actualizar Solicitud")
 
     if actualizar:
-        if fecha_cierre.strip():
+        if registrar_fecha_cierre:
             try:
-                fecha_db = pd.to_datetime(fecha_cierre).to_pydatetime()
+                fecha_db = pd.Timestamp.combine(
+                    fecha_cierre_fecha,
+                    fecha_cierre_hora
+                ).to_pydatetime()
             except Exception:
-                st.warning("⚠️ La fecha de cierre no tiene un formato válido.")
+                st.warning("⚠️ La fecha y hora de cierre no tienen un formato válido.")
                 st.stop()
         else:
             fecha_db = None
