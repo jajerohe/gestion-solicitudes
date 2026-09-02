@@ -40,14 +40,14 @@ def obtener_gestiones(id_solicitud):
     try:
         db.conectar()
         db.execute('''
-            SELECT "ID_GESTION","FECHA_GESTION","OBSERVACION"
+            SELECT "FECHA_GESTION","OBSERVACION"
             FROM public."Gestiones"
             WHERE "ID_SOLICITUD" = %s
             ORDER BY "FECHA_GESTION" DESC
         ''', (id_solicitud,))
         return pd.DataFrame(
             db.fetchall(),
-            columns=["ID_GESTION","FECHA_GESTION","OBSERVACION"]
+            columns=["FECHA_GESTION","OBSERVACION"]
         )
     finally:
         db.cerrar()
