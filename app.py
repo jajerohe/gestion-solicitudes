@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 
 from database import Database
+from excel_web import cargar_excel
 
 
 # ============================================================
@@ -20,6 +21,109 @@ st.set_page_config(
 # ============================================================
 
 st.title("📋 Gestión de Solicitudes - ECP")
+
+# ============================================================
+# CARGA DE EXCEL
+# ============================================================
+
+st.subheader("📤 Cargar solicitudes desde Excel")
+
+archivo_excel = st.file_uploader(
+    "Seleccione un archivo Excel",
+    type=["xlsx"],
+    help=(
+        "El archivo debe contener las hojas "
+        "DETALLE_GENERAL y/o DETALLE_FUNCIONALES."
+    )
+)
+
+# ============================================================
+# PROCESAR EXCEL
+# ============================================================
+
+if archivo_excel is not None:
+
+    st.info(
+        f"📄 Archivo seleccionado: "
+        f"{archivo_excel.name}"
+    )
+
+
+    if st.button(
+        "🚀 Procesar archivo",
+        type="primary"
+    ):
+
+        db = Database()
+
+        try:
+
+            db.conectar()
+
+
+            with st.spinner(
+                "Procesando archivo Excel..."
+            ):
+
+                resultado = cargar_excel(
+                    archivo_excel,
+                    db
+                )
+
+
+            db.commit()
+
+
+            st.success(
+                "✅ Archivo procesado correctamente."
+            )
+
+
+            # ------------------------------------------------
+            # RESUMEN
+            # ------------------------------------------------
+
+            col1, col2, col3 = st.columns(3)
+
+
+            with col1:
+
+                st.metric(
+                    "Registros generales",
+                    resultado["generales"]
+                )
+
+
+            with col2:
+
+                st.metric(
+                    "Registros funcionales",
+                    resultado["funcionales"]
+                )
+
+
+            with col3:
+
+                st.metric(
+                    "Duplicados",
+                    resultado["duplicados"]
+                )
+
+
+        except Exception as e:
+
+            db.rollback()
+
+            st.error(
+                "❌ Error procesando el archivo."
+            )
+
+            st.exception(e)
+
+
+        finally:
+
+            db.cerrar()
 
 
 # ============================================================
