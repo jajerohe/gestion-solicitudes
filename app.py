@@ -10,6 +10,8 @@ st.set_page_config(
     layout="wide"
 )
 
+st.title("📋 Gestión de Solicitudes - ECP")
+
 st.markdown(
     """
     <div style="margin-top: -15px; margin-bottom: 20px;
