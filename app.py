@@ -10,11 +10,16 @@ st.set_page_config(
     layout="wide"
 )
 
-st.title("📋 Gestión de Solicitudes - ECP")
-
 st.markdown(
     """
-    <div style="margin-top: -15px; margin-bottom: 20px;
+    <div style="display: flex; align-items: center; gap: 15px;">
+        <span style="font-size: 42px;">📋</span>
+        <span style="font-size: 42px; font-weight: 700; color: #24344D;">
+            Gestión de Solicitudes - ECP
+        </span>
+    </div>
+
+    <div style="margin-left: 2px; margin-top: 2px;
                 color: #666; font-size: 13px;">
         Desarrollado por <b>Janssen Rodríguez</b>
     </div>
@@ -63,8 +68,6 @@ def obtener_gestiones(id_solicitud):
         )
     finally:
         db.cerrar()
-
-st.title("📋 Gestión de Solicitudes - ECP")
 
 st.subheader("📤 Cargar solicitudes desde Excel")
 archivo_excel = st.file_uploader(
