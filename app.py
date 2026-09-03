@@ -69,6 +69,44 @@ def obtener_gestiones(id_solicitud):
     finally:
         db.cerrar()
 
+
+
+def guardar_auditoria(
+    db,
+    nombre_archivo,
+    registros_generales,
+    registros_funcionales,
+    estado,
+    observaciones,
+    usuario_carga="Janssen Rodríguez"
+):
+    """Guarda la auditoría de la carga en public."Auditoria"."""
+    fecha_actual = pd.Timestamp.now().to_pydatetime()
+
+    db.execute("""
+        INSERT INTO public."Auditoria"
+        (
+            "NOMBREARCHIVO",
+            "FECHACARGUE",
+            "REGISTROSGENERALES",
+            "REGISTROSFUNCIONALES",
+            "ESTADO",
+            "OBSERVACIONES",
+            "USUARIOCARGA",
+            "FECHAREGISTRO"
+        )
+        VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
+    """, (
+        nombre_archivo,
+        fecha_actual,
+        int(registros_generales or 0),
+        int(registros_funcionales or 0),
+        estado,
+        observaciones,
+        usuario_carga,
+        fecha_actual
+    ))
+
 st.subheader("📤 Cargar solicitudes desde Excel")
 archivo_excel = st.file_uploader(
     "Seleccione un archivo Excel",
@@ -119,23 +157,62 @@ if archivo_excel is not None:
 
     if cargar:
         db = Database()
+
         try:
             db.conectar()
-            with st.spinner("Cargando solicitudes en Supabase..."):
-                resultado = cargar_excel(archivo_excel, db)
-            db.commit()
 
-            st.success("✅ Archivo cargado correctamente.")
+            with st.spinner("Cargando solicitudes en Supabase..."):
+                # Cargar las solicitudes
+                resultado = cargar_excel(archivo_excel, db)
+
+                generales = int(resultado.get("generales", 0) or 0)
+                funcionales = int(resultado.get("funcionales", 0) or 0)
+                duplicados = int(resultado.get("duplicados", 0) or 0)
+                errores = int(resultado.get("errores", 0) or 0)
+
+                # Estado de la auditoría
+                estado_auditoria = "EXITOSO" if errores == 0 else "CON ERRORES"
+
+                observaciones = (
+                    f"Archivo procesado. "
+                    f"Duplicados: {duplicados}. "
+                    f"Errores: {errores}."
+                )
+
+                # Guardar auditoría usando la misma conexión
+                guardar_auditoria(
+                    db=db,
+                    nombre_archivo=archivo_excel.name,
+                    registros_generales=generales,
+                    registros_funcionales=funcionales,
+                    estado=estado_auditoria,
+                    observaciones=observaciones,
+                    usuario_carga="Janssen Rodríguez"
+                )
+
+                # Confirmar solicitudes + auditoría
+                db.commit()
+
+            st.success(
+                "✅ Archivo cargado y auditoría registrada correctamente."
+            )
+
             a, b, c, d = st.columns(4)
-            a.metric("Generales", resultado["generales"])
-            b.metric("Funcionales", resultado["funcionales"])
-            c.metric("Duplicados", resultado["duplicados"])
-            d.metric("Errores", resultado["errores"])
+            a.metric("Generales", generales)
+            b.metric("Funcionales", funcionales)
+            c.metric("Duplicados", duplicados)
+            d.metric("Errores", errores)
+
             st.rerun()
+
         except Exception as e:
             db.rollback()
-            st.error("❌ No fue posible cargar el archivo.")
+            st.error(
+                "❌ No fue posible cargar el archivo ni registrar la auditoría."
+            )
+            st.error(f"Detalle del error: {e}")
             st.exception(e)
+
         finally:
             db.cerrar()
 
