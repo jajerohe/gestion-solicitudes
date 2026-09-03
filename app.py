@@ -20,7 +20,7 @@ st.markdown(
     </div>
     """,
     unsafe_allow_html=True
-)
+
 )
 
 def obtener_solicitudes():
