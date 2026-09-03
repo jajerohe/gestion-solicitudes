@@ -4,12 +4,6 @@ import pandas as pd
 from database import Database
 from excel_web import analizar_excel, cargar_excel
 
-st.set_page_config(
-    page_title="Gestión de Solicitudes - ECP",
-    page_icon="📋",
-    layout="wide"
-)
-
 st.title("📋 Gestión de Solicitudes - ECP")
 
 st.markdown(
