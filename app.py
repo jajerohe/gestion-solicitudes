@@ -13,7 +13,7 @@ st.markdown(
     """
     <div style="margin-top: -15px; margin-bottom: 20px;
                 color: #666; font-size: 13px;">
-        Desarrollado por <b>Janssen Rodríguez</b>
+        Desarrollado por <b>Janssen de J. Rodríguez Hernández</b>
     </div>
     """,
     unsafe_allow_html=True
