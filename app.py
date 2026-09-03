@@ -10,6 +10,19 @@ st.set_page_config(
     layout="wide"
 )
 
+st.title("📋 Gestión de Solicitudes - ECP")
+
+st.markdown(
+    """
+    <div style="margin-top: -15px; margin-bottom: 20px;
+                color: #666; font-size: 13px;">
+        Desarrollado por <b>Janssen Rodríguez</b>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+)
+
 def obtener_solicitudes():
     db = Database()
     try:
