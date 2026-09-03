@@ -4,7 +4,7 @@ import pandas as pd
 from database import Database
 from excel_web import analizar_excel, cargar_excel
 
-st.title("📋 Gestión de Solicitudes - ECP")
+st.title("Gestión de Solicitudes - ECP - 📋")
 
 st.markdown(
     """
