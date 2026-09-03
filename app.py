@@ -146,7 +146,7 @@ except Exception as e:
     st.exception(e)
     st.stop()
 
-st.success(f"✅ Conexión con Supabase exitosa — {len(df)} solicitud(es) encontrada(s)")
+st.success(f"✅ Conexión con Base de Datos exitosa — {len(df)} solicitud(es) encontrada(s)")
 
 texto = st.text_input(
     "🔎 Buscar solicitud",
