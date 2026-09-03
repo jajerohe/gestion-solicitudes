@@ -21,7 +21,6 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
-)
 
 def obtener_solicitudes():
     db = Database()
