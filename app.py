@@ -357,9 +357,9 @@ if not df_filtrado.empty:
     st.subheader("⚙️ Actualizar solicitud")
 
     estados = [
-        "Cancelled","Categorize","In Progress","Fulfilled",
-        "Pending Customer","Pending Vendor",
-        "Suspended","Resolved"
+        "Cancelled","Categorize","Fulfilled","In Progress","Open","Pending"
+        "Pending Customer","Pending Force","Pending Parent Incident","Pending Vendor","Planned",
+        "Ready","Resolved","Suspended","Work In Progress"
     ]
     codigos = [
         "Cancelado por incumplimiento de politicas",
