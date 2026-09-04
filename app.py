@@ -246,396 +246,327 @@ else:
 
 
 
-# ============================================================
-# ESTILO TABLA COMPACTA
-# ============================================================
-st.markdown("""
-<style>
-/* Encabezados de la tabla */
-.tabla-header {
-    font-size: 13px !important;
-    font-weight: 700;
-    line-height: 1.05;
-    white-space: nowrap;
-    color: #24344D;
-}
-
-/* Celdas */
-.tabla-cell {
-    font-size: 12px !important;
-    line-height: 1;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    height: 22px;
-    padding: 0px !important;
-    margin: 0px !important;
-}
-
-/* Botones de acción */
-div[data-testid="stButton"] > button {
-    min-height: 27px;
-    height: 27px;
-    padding: 0px 4px;
-    font-size: 12px;
-    border-radius: 50%;
-}
-
-/* Separadores más compactos */
-hr {
-    margin: 1px 0px !important;
-}
-</style>
-""", unsafe_allow_html=True)
-
 st.subheader(f"Solicitudes ({len(df_filtrado)})")
 
-# Solicitud y acción seleccionadas para mostrar el panel dentro de la página.
-if "solicitud_seleccionada" not in st.session_state:
-    st.session_state.solicitud_seleccionada = None
-
-if "accion_solicitud" not in st.session_state:
-    st.session_state.accion_solicitud = None
-
-def seleccionar_solicitud(id_solicitud, accion):
-    st.session_state.solicitud_seleccionada = id_solicitud
-    st.session_state.accion_solicitud = accion
-
 
 # ============================================================
-# PANEL DE ACCIÓN - APARECE SOBRE LA TABLA
+# VENTANA TIPO OVERLAY PARA INFORMACIÓN + NUEVA GESTIÓN
 # ============================================================
-id_panel = st.session_state.solicitud_seleccionada
-accion_panel = st.session_state.accion_solicitud
+@st.dialog("📄 Información de la solicitud", width="large")
+def ventana_gestion(id_solicitud):
 
-if id_panel is not None and id_panel in df_filtrado["ID_SOLICITUD"].tolist():
-
-    solicitud_panel = df_filtrado[
-        df_filtrado["ID_SOLICITUD"] == id_panel
+    solicitud = df_filtrado[
+        df_filtrado["ID_SOLICITUD"] == id_solicitud
     ].iloc[0]
 
-    st.markdown(
-        """
-        <div style="
-            border: 1px solid #d9d9d9;
-            border-radius: 10px;
-            padding: 18px 22px 20px 22px;
-            margin: 10px 0 20px 0;
-            background: #ffffff;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-        ">
-        """,
-        unsafe_allow_html=True
-    )
+    # Información de la solicitud
+    st.markdown("### 📄 Información de la solicitud")
 
-    titulo_panel = (
-        "📝 Nueva gestión"
-        if accion_panel == "gestion"
-        else "⚙️ Actualizar solicitud"
-    )
-
-    c_titulo, c_cerrar = st.columns([8, 1])
-
-    with c_titulo:
-        st.subheader(f"{titulo_panel} — {id_panel}")
-
-    with c_cerrar:
-        if st.button("✖ Cerrar", key="cerrar_panel", use_container_width=True):
-            st.session_state.solicitud_seleccionada = None
-            st.session_state.accion_solicitud = None
-            st.rerun()
-
-    # Información de la solicitud.
     a, b, c = st.columns(3)
 
     with a:
-        st.markdown(f"**ID_SOLICITUD**  \n{solicitud_panel['ID_SOLICITUD']}")
-        st.markdown(f"**TÍTULO**  \n{solicitud_panel['TITULO']}")
+        st.markdown(f"**ID_SOLICITUD**  \n{solicitud['ID_SOLICITUD']}")
+        st.markdown(f"**TÍTULO**  \n{solicitud['TITULO']}")
         st.markdown(
             f"**SUBSERVICIO AFECTADO**  \n"
-            f"{solicitud_panel['SUBSERVICIO_AFECTADO']}"
+            f"{solicitud['SUBSERVICIO_AFECTADO']}"
         )
 
     with b:
-        st.markdown(f"**PRODUCT OWNER**  \n{solicitud_panel['PRODUCT_OWNER']}")
-        st.markdown(f"**ASIGNADO A**  \n{solicitud_panel['ASIGNADO_A']}")
+        st.markdown(f"**PRODUCT OWNER**  \n{solicitud['PRODUCT_OWNER']}")
+        st.markdown(f"**ASIGNADO A**  \n{solicitud['ASIGNADO_A']}")
         st.markdown(
             f"**NOMBRE ASIGNATARIO**  \n"
-            f"{solicitud_panel['NOMBRE_ASIGNATARIO']}"
+            f"{solicitud['NOMBRE_ASIGNATARIO']}"
         )
 
     with c:
         st.markdown(
             f"**CORREO ASIGNATARIO**  \n"
-            f"{solicitud_panel['CORREO_ASIGNATARIO']}"
+            f"{solicitud['CORREO_ASIGNATARIO']}"
         )
-        st.markdown(f"**ESTADO**  \n{solicitud_panel['STATUS']}")
+        st.markdown(f"**ESTADO**  \n{solicitud['STATUS']}")
         st.markdown(
             f"**FECHA APERTURA**  \n"
-            f"{solicitud_panel['FECHA_APERTURA']}"
+            f"{solicitud['FECHA_APERTURA']}"
         )
 
     st.divider()
+    st.markdown("### 📝 Nueva gestión")
 
-    # ========================================================
-    # NUEVA GESTIÓN
-    # ========================================================
-    if accion_panel == "gestion":
+    with st.form(f"form_gestion_popup_{id_solicitud}"):
 
-        with st.form(f"form_gestion_panel_{id_panel}"):
+        ahora = pd.Timestamp.now()
+        c_fecha, c_hora = st.columns(2)
 
-            ahora = pd.Timestamp.now()
-            c_fecha, c_hora = st.columns(2)
-
-            with c_fecha:
-                fecha_seleccionada = st.date_input(
-                    "Fecha de gestión",
-                    value=ahora.date(),
-                    format="DD/MM/YYYY"
-                )
-
-            with c_hora:
-                hora_seleccionada = st.time_input(
-                    "Hora de gestión 🕐",
-                    value=ahora.time().replace(microsecond=0),
-                    step=1,
-                    format="24h"
-                )
-
-            observacion = st.text_area(
-                "Observación",
-                placeholder="Digite la observación de la gestión...",
-                height=130
+        with c_fecha:
+            fecha_seleccionada = st.date_input(
+                "Fecha de gestión",
+                value=ahora.date(),
+                format="DD/MM/YYYY"
             )
 
-            guardar = st.form_submit_button(
-                "💾 Guardar Gestión",
-                use_container_width=True
+        with c_hora:
+            hora_seleccionada = st.time_input(
+                "Hora de gestión 🕐",
+                value=ahora.time().replace(microsecond=0),
+                step=1,
+                format="24h"
             )
 
-        if guardar:
-
-            observacion = observacion.strip()
-
-            if not observacion:
-                st.warning("⚠️ Debe ingresar una observación.")
-            else:
-
-                try:
-                    fecha = pd.Timestamp.combine(
-                        fecha_seleccionada,
-                        hora_seleccionada
-                    ).to_pydatetime()
-
-                    db = Database()
-
-                    try:
-                        db.conectar()
-
-                        db.execute(
-                            """
-                            SELECT 1
-                            FROM public."Gestiones"
-                            WHERE "ID_SOLICITUD" = %s
-                              AND "OBSERVACION" = %s
-                            LIMIT 1
-                            """,
-                            (id_panel, observacion)
-                        )
-
-                        if db.fetchone():
-                            st.warning(
-                                "⚠️ Esta observación ya existe para esta solicitud."
-                            )
-                        else:
-                            db.execute(
-                                """
-                                INSERT INTO public."Gestiones"
-                                ("FECHA_GESTION","ID_SOLICITUD","OBSERVACION")
-                                VALUES (%s,%s,%s)
-                                """,
-                                (fecha, id_panel, observacion)
-                            )
-
-                            db.commit()
-
-                            st.success(
-                                "✅ Gestión guardada correctamente."
-                            )
-
-                            st.session_state.solicitud_seleccionada = None
-                            st.session_state.accion_solicitud = None
-                            st.rerun()
-
-                    except Exception as e:
-                        db.rollback()
-                        st.error("❌ No fue posible guardar la gestión.")
-                        st.exception(e)
-
-                    finally:
-                        db.cerrar()
-
-                except Exception as e:
-                    st.error("❌ La fecha y hora no tienen un formato válido.")
-                    st.exception(e)
-
-    # ========================================================
-    # ACTUALIZAR SOLICITUD
-    # ========================================================
-    elif accion_panel == "actualizar":
-
-        estados = [
-            "Cancelled",
-            "Categorize",
-            "Fulfilled",
-            "In Progress",
-            "Open",
-            "Pending",
-            "Pending Customer",
-            "Pending Force",
-            "Pending Parent Incident",
-            "Pending Vendor",
-            "Planned",
-            "Ready",
-            "Resolved",
-            "Suspended",
-            "Work In Progress"
-        ]
-
-        codigos = [
-            "Cancelado por incumplimiento de politicas",
-            "Cancelado por el usuario",
-            "Resuelto por soporte tecnico"
-        ]
-
-        status_opciones = [""] + estados
-        codigo_opciones = [""] + codigos
-
-        status_actual = solicitud_panel["STATUS"]
-        codigo_actual = solicitud_panel.get("CODIGO_CIERRE", None)
-        fecha_actual = solicitud_panel.get("FECHA_CIERRE", None)
-
-        i_status = (
-            status_opciones.index(status_actual)
-            if status_actual in status_opciones
-            else 0
+        observacion = st.text_area(
+            "Observación",
+            placeholder="Digite la observación de la gestión...",
+            height=130
         )
 
-        i_codigo = (
-            codigo_opciones.index(codigo_actual)
-            if codigo_actual in codigo_opciones
-            else 0
+        guardar = st.form_submit_button(
+            "💾 Guardar Gestión",
+            use_container_width=False
         )
 
-        fecha_inicial = (
-            pd.to_datetime(fecha_actual)
-            if pd.notna(fecha_actual)
-            else pd.Timestamp.now()
-        )
+    if guardar:
 
-        with st.form(f"form_actualizar_panel_{id_panel}"):
+        observacion = observacion.strip()
 
-            a, b = st.columns(2)
+        if not observacion:
+            st.warning("⚠️ Debe ingresar una observación.")
+            return
 
-            with a:
-                nuevo_status = st.selectbox(
-                    "Estado",
-                    status_opciones,
-                    index=i_status
-                )
+        fecha = pd.Timestamp.combine(
+            fecha_seleccionada,
+            hora_seleccionada
+        ).to_pydatetime()
 
-            with b:
-                nuevo_codigo = st.selectbox(
-                    "Código de cierre",
-                    codigo_opciones,
-                    index=i_codigo
-                )
+        db = Database()
 
-            c_fecha, c_hora = st.columns(2)
+        try:
+            db.conectar()
 
-            with c_fecha:
-                fecha_cierre_fecha = st.date_input(
-                    "Fecha de cierre",
-                    value=fecha_inicial.date(),
-                    format="DD/MM/YYYY"
-                )
-
-            with c_hora:
-                fecha_cierre_hora = st.time_input(
-                    "Hora de cierre 🕐",
-                    value=fecha_inicial.time().replace(microsecond=0),
-                    step=1,
-                    format="24h"
-                )
-
-            actualizar = st.form_submit_button(
-                "🔄 Actualizar Solicitud",
-                use_container_width=True
+            db.execute(
+                """
+                SELECT 1
+                FROM public."Gestiones"
+                WHERE "ID_SOLICITUD" = %s
+                  AND "OBSERVACION" = %s
+                LIMIT 1
+                """,
+                (id_solicitud, observacion)
             )
 
-        if actualizar:
-
-            try:
-                fecha_db = pd.Timestamp.combine(
-                    fecha_cierre_fecha,
-                    fecha_cierre_hora
-                ).to_pydatetime()
-
-                db = Database()
-
-                try:
-                    db.conectar()
-
-                    db.execute(
-                        """
-                        UPDATE public."Solicitudes"
-                        SET "FECHA_CIERRE" = %s,
-                            "STATUS" = %s,
-                            "CODIGO_CIERRE" = %s
-                        WHERE "ID_SOLICITUD" = %s
-                        """,
-                        (
-                            fecha_db,
-                            nuevo_status or None,
-                            nuevo_codigo or None,
-                            id_panel
-                        )
-                    )
-
-                    db.commit()
-
-                    st.success(
-                        "✅ La solicitud fue actualizada correctamente."
-                    )
-
-                    st.session_state.solicitud_seleccionada = None
-                    st.session_state.accion_solicitud = None
-                    st.rerun()
-
-                except Exception as e:
-                    db.rollback()
-                    st.error(
-                        "❌ No fue posible actualizar la solicitud."
-                    )
-                    st.exception(e)
-
-                finally:
-                    db.cerrar()
-
-            except Exception as e:
+            if db.fetchone():
                 st.warning(
-                    "⚠️ La fecha y hora de cierre no tienen un formato válido."
+                    "⚠️ Esta observación ya existe para esta solicitud."
                 )
-                st.exception(e)
+                return
 
-    st.markdown("</div>", unsafe_allow_html=True)
+            db.execute(
+                """
+                INSERT INTO public."Gestiones"
+                ("FECHA_GESTION","ID_SOLICITUD","OBSERVACION")
+                VALUES (%s,%s,%s)
+                """,
+                (fecha, id_solicitud, observacion)
+            )
+
+            db.commit()
+
+            st.success("✅ Gestión guardada correctamente.")
+            st.rerun()
+
+        except Exception as e:
+            db.rollback()
+            st.error("❌ No fue posible guardar la gestión.")
+            st.exception(e)
+
+        finally:
+            db.cerrar()
 
 
 # ============================================================
-# TABLA DE SOLICITUDES
+# VENTANA TIPO OVERLAY PARA ACTUALIZAR SOLICITUD
+# ============================================================
+@st.dialog("⚙️ Actualizar solicitud", width="large")
+def ventana_actualizar(id_solicitud):
+
+    solicitud = df_filtrado[
+        df_filtrado["ID_SOLICITUD"] == id_solicitud
+    ].iloc[0]
+
+    st.markdown("### 📄 Información de la solicitud")
+
+    a, b, c = st.columns(3)
+
+    with a:
+        st.markdown(f"**ID_SOLICITUD**  \n{solicitud['ID_SOLICITUD']}")
+        st.markdown(f"**TÍTULO**  \n{solicitud['TITULO']}")
+        st.markdown(
+            f"**SUBSERVICIO AFECTADO**  \n"
+            f"{solicitud['SUBSERVICIO_AFECTADO']}"
+        )
+
+    with b:
+        st.markdown(f"**PRODUCT OWNER**  \n{solicitud['PRODUCT_OWNER']}")
+        st.markdown(f"**ASIGNADO A**  \n{solicitud['ASIGNADO_A']}")
+        st.markdown(
+            f"**NOMBRE ASIGNATARIO**  \n"
+            f"{solicitud['NOMBRE_ASIGNATARIO']}"
+        )
+
+    with c:
+        st.markdown(
+            f"**CORREO ASIGNATARIO**  \n"
+            f"{solicitud['CORREO_ASIGNATARIO']}"
+        )
+        st.markdown(f"**ESTADO**  \n{solicitud['STATUS']}")
+        st.markdown(
+            f"**FECHA APERTURA**  \n"
+            f"{solicitud['FECHA_APERTURA']}"
+        )
+
+    st.divider()
+    st.markdown("### ⚙️ Actualizar solicitud")
+
+    estados = [
+        "Cancelled",
+        "Categorize",
+        "Fulfilled",
+        "In Progress",
+        "Open",
+        "Pending",
+        "Pending Customer",
+        "Pending Force",
+        "Pending Parent Incident",
+        "Pending Vendor",
+        "Planned",
+        "Ready",
+        "Resolved",
+        "Suspended",
+        "Work In Progress"
+    ]
+
+    codigos = [
+        "Cancelado por incumplimiento de politicas",
+        "Cancelado por el usuario",
+        "Resuelto por soporte tecnico"
+    ]
+
+    status_opciones = [""] + estados
+    codigo_opciones = [""] + codigos
+
+    status_actual = solicitud["STATUS"]
+    codigo_actual = solicitud.get("CODIGO_CIERRE", None)
+    fecha_actual = solicitud.get("FECHA_CIERRE", None)
+
+    i_status = (
+        status_opciones.index(status_actual)
+        if status_actual in status_opciones
+        else 0
+    )
+
+    i_codigo = (
+        codigo_opciones.index(codigo_actual)
+        if codigo_actual in codigo_opciones
+        else 0
+    )
+
+    fecha_inicial = (
+        pd.to_datetime(fecha_actual)
+        if pd.notna(fecha_actual)
+        else pd.Timestamp.now()
+    )
+
+    with st.form(f"form_actualizar_popup_{id_solicitud}"):
+
+        a, b = st.columns(2)
+
+        with a:
+            nuevo_status = st.selectbox(
+                "Estado",
+                status_opciones,
+                index=i_status
+            )
+
+        with b:
+            nuevo_codigo = st.selectbox(
+                "Código de cierre",
+                codigo_opciones,
+                index=i_codigo
+            )
+
+        c_fecha, c_hora = st.columns(2)
+
+        with c_fecha:
+            fecha_cierre_fecha = st.date_input(
+                "Fecha de cierre",
+                value=fecha_inicial.date(),
+                format="DD/MM/YYYY"
+            )
+
+        with c_hora:
+            fecha_cierre_hora = st.time_input(
+                "Hora de cierre 🕐",
+                value=fecha_inicial.time().replace(microsecond=0),
+                step=1,
+                format="24h"
+            )
+
+        actualizar = st.form_submit_button(
+            "🔄 Actualizar Solicitud",
+            use_container_width=False
+        )
+
+    if actualizar:
+
+        fecha_db = pd.Timestamp.combine(
+            fecha_cierre_fecha,
+            fecha_cierre_hora
+        ).to_pydatetime()
+
+        db = Database()
+
+        try:
+            db.conectar()
+
+            db.execute(
+                """
+                UPDATE public."Solicitudes"
+                SET "FECHA_CIERRE" = %s,
+                    "STATUS" = %s,
+                    "CODIGO_CIERRE" = %s
+                WHERE "ID_SOLICITUD" = %s
+                """,
+                (
+                    fecha_db,
+                    nuevo_status or None,
+                    nuevo_codigo or None,
+                    id_solicitud
+                )
+            )
+
+            db.commit()
+
+            st.success(
+                "✅ La solicitud fue actualizada correctamente."
+            )
+            st.rerun()
+
+        except Exception as e:
+            db.rollback()
+            st.error(
+                "❌ No fue posible actualizar la solicitud."
+            )
+            st.exception(e)
+
+        finally:
+            db.cerrar()
+
+
+# ============================================================
+# TABLA PRINCIPAL
 # ============================================================
 headers = st.columns([
-    1.25, 3.7, 1.55, 2.15, 1.75, 1.45, 1.05, 2.25, 2.65, 0.65, 0.75
+    1.0, 3.8, 1.5, 2.2, 1.8, 1.5, 1.0, 1.8, 2.7, 0.8, 0.9
 ])
 
 for col, title in zip(headers, [
@@ -651,10 +582,7 @@ for col, title in zip(headers, [
     "GESTIÓN",
     "ACTUALIZAR"
 ]):
-    col.markdown(
-        f'<div class="tabla-header">{title}</div>',
-        unsafe_allow_html=True
-    )
+    col.markdown(f"**{title}**")
 
 st.divider()
 
@@ -663,7 +591,7 @@ for _, fila in df_filtrado.iterrows():
     sid = fila["ID_SOLICITUD"]
 
     cols = st.columns([
-        1.25, 3.7, 1.55, 2.15, 1.75, 1.45, 1.05, 2.25, 2.65, 0.65, 0.75
+        1.0, 3.8, 1.5, 2.2, 1.8, 1.5, 1.0, 1.8, 2.7, 0.8, 0.9
     ])
 
     valores = [
@@ -687,10 +615,7 @@ for _, fila in df_filtrado.iterrows():
                     "%Y-%m-%d %H:%M:%S"
                 )
 
-            st.markdown(
-                f'<div class="tabla-cell" title="{str(valor)}">{str(valor)}</div>',
-                unsafe_allow_html=True
-            )
+            st.write(str(valor))
 
     with cols[9]:
         if st.button(
@@ -699,8 +624,7 @@ for _, fila in df_filtrado.iterrows():
             help=f"Adicionar gestión a {sid}",
             use_container_width=True
         ):
-            seleccionar_solicitud(sid, "gestion")
-            st.rerun()
+            ventana_gestion(sid)
 
     with cols[10]:
         if st.button(
@@ -709,11 +633,9 @@ for _, fila in df_filtrado.iterrows():
             help=f"Actualizar solicitud {sid}",
             use_container_width=True
         ):
-            seleccionar_solicitud(sid, "actualizar")
-            st.rerun()
+            ventana_actualizar(sid)
 
     st.divider()
-
 
 if df_filtrado.empty:
     st.info(
