@@ -34,7 +34,8 @@ def obtener_solicitudes():
         sql = '''
             SELECT "ID_SOLICITUD","TITULO","FECHA_APERTURA",
                    "SUBSERVICIO_AFECTADO","PRODUCT_OWNER","STATUS",
-                   "ASIGNADO_A","NOMBRE_ASIGNATARIO","CORREO_ASIGNATARIO"
+                   "ASIGNADO_A","NOMBRE_ASIGNATARIO","CORREO_ASIGNATARIO",
+                   "FECHA_CIERRE","CODIGO_CIERRE"
             FROM public."Solicitudes"
             WHERE "CODIGO_CIERRE" IS NULL
               AND "FECHA_CIERRE" IS NULL
@@ -45,7 +46,7 @@ def obtener_solicitudes():
         columnas = [
             "ID_SOLICITUD","TITULO","FECHA_APERTURA","SUBSERVICIO_AFECTADO",
             "PRODUCT_OWNER","STATUS","ASIGNADO_A","NOMBRE_ASIGNATARIO",
-            "CORREO_ASIGNATARIO"
+            "CORREO_ASIGNATARIO","FECHA_CIERRE","CODIGO_CIERRE"
         ]
         return pd.DataFrame(registros, columns=columnas)
     finally:
@@ -136,9 +137,9 @@ if archivo_excel is not None:
             with a:
                 st.metric("Registros filtrados", len(preview))
             with b:
-                st.metric("DETALLE_GENERAL", len(preview[preview["HOJA"] == "DETALLE_GENERAL"]))
+                st.metric("DETALLE_GENERAL", len(preview[preview["ORIGEN"].astype(str).str.upper() == "DETALLE_GENERAL"]))
             with c:
-                st.metric("DETALLE_FUNCIONALES", len(preview[preview["HOJA"] == "DETALLE_FUNCIONALES"]))
+                st.metric("DETALLE_FUNCIONALES", len(preview[preview["ORIGEN"].astype(str).str.upper() == "DETALLE_FUNCIONALES"]))
 
             if not preview.empty:
                 st.subheader("👥 Product Owner encontrados")
@@ -562,14 +563,71 @@ def ventana_actualizar(id_solicitud):
             db.cerrar()
 
 
+
+# ============================================================
+# ESTILO TABLA PRINCIPAL
+# ============================================================
+st.markdown("""
+<style>
+/* Encabezados de la tabla */
+.tabla-header {
+    font-size: 13px !important;
+    font-weight: 700 !important;
+    line-height: 1 !important;
+    white-space: nowrap;
+    color: #24344D;
+    padding: 0 !important;
+    margin: 0 !important;
+}
+
+/* Celdas de la tabla */
+.tabla-cell {
+    font-size: 12px !important;
+    line-height: 1 !important;
+    height: 22px !important;
+    min-height: 22px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Reducir espacios internos de las columnas */
+div[data-testid="column"] {
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+}
+
+/* Botones + de gestión y actualización */
+div[data-testid="stButton"] > button {
+    min-height: 24px !important;
+    height: 24px !important;
+    padding: 0 4px !important;
+    margin: 0 !important;
+    font-size: 11px !important;
+    line-height: 1 !important;
+    border-radius: 50% !important;
+}
+
+/* Separador del encabezado */
+hr {
+    margin: 2px 0 !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
 # ============================================================
 # TABLA PRINCIPAL
 # ============================================================
-headers = st.columns([
-    1.0, 3.8, 1.5, 2.2, 1.8, 1.5, 1.0, 1.8, 2.7, 0.8, 0.9
-])
+anchos_tabla = [
+    1.0, 3.8, 1.5, 2.2, 1.8, 1.5,
+    1.0, 1.8, 2.7, 0.8, 0.9
+]
 
-for col, title in zip(headers, [
+headers = st.columns(anchos_tabla)
+
+titulos_tabla = [
     "ID_SOLICITUD",
     "TITULO",
     "FECHA_APERTURA",
@@ -581,8 +639,14 @@ for col, title in zip(headers, [
     "CORREO_ASIGNATARIO",
     "GESTIÓN",
     "ACTUALIZAR"
-]):
-    col.markdown(f"**{title}**")
+]
+
+for col, title in zip(headers, titulos_tabla):
+    with col:
+        st.markdown(
+            f'<div class="tabla-header">{title}</div>',
+            unsafe_allow_html=True
+        )
 
 st.divider()
 
@@ -590,9 +654,7 @@ for _, fila in df_filtrado.iterrows():
 
     sid = fila["ID_SOLICITUD"]
 
-    cols = st.columns([
-        1.0, 3.8, 1.5, 2.2, 1.8, 1.5, 1.0, 1.8, 2.7, 0.8, 0.9
-    ])
+    cols = st.columns(anchos_tabla)
 
     valores = [
         fila["ID_SOLICITUD"],
@@ -615,8 +677,16 @@ for _, fila in df_filtrado.iterrows():
                     "%Y-%m-%d %H:%M:%S"
                 )
 
-            st.write(str(valor))
+            # Título y demás campos conservan el contenido,
+            # pero se muestran compactos y sin aumentar la altura.
+            valor = "" if pd.isna(valor) else str(valor)
 
+            st.markdown(
+                f'<div class="tabla-cell" title="{valor}">{valor}</div>',
+                unsafe_allow_html=True
+            )
+
+    # Botón para adicionar gestión
     with cols[9]:
         if st.button(
             "➕",
@@ -626,6 +696,7 @@ for _, fila in df_filtrado.iterrows():
         ):
             ventana_gestion(sid)
 
+    # Botón para actualizar solicitud
     with cols[10]:
         if st.button(
             "➕",
@@ -635,7 +706,6 @@ for _, fila in df_filtrado.iterrows():
         ):
             ventana_actualizar(sid)
 
-    st.divider()
 
 if df_filtrado.empty:
     st.info(
