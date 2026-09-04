@@ -164,6 +164,13 @@ if archivo_excel is not None:
                 # Cargar las solicitudes
                 resultado = cargar_excel(archivo_excel, db)
 
+                # Garantizar que todos los TITULO queden almacenados en MAYÚSCULAS.
+                db.execute("""
+                    UPDATE public."Solicitudes"
+                    SET "TITULO" = UPPER("TITULO")
+                    WHERE "TITULO" IS NOT NULL
+                """)
+
                 generales = int(resultado.get("generales", 0) or 0)
                 funcionales = int(resultado.get("funcionales", 0) or 0)
                 duplicados = int(resultado.get("duplicados", 0) or 0)
