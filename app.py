@@ -588,22 +588,22 @@ st.divider()
 
 for _, fila in df_filtrado.iterrows():
 
-    sid = fila["ID_SOLICITUD"]
+    sid = fila["SOLICITUD"]
 
     cols = st.columns([
         1.0, 3.8, 1.5, 2.2, 1.8, 1.5, 1.0, 1.8, 2.7, 0.8, 0.9
     ])
 
     valores = [
-        fila["ID_SOLICITUD"],
+        fila["SOLICITUD"],
         fila["TITULO"],
-        fila["FECHA_APERTURA"],
-        fila["SUBSERVICIO_AFECTADO"],
-        fila["PRODUCT_OWNER"],
-        fila["STATUS"],
-        fila["ASIGNADO_A"],
-        fila["NOMBRE_ASIGNATARIO"],
-        fila["CORREO_ASIGNATARIO"]
+        fila["APERTURA"],
+        fila["SERVICIO"],
+        fila["POD"],
+        fila["ESTADO"],
+        fila["ASIGNADO A"],
+        fila["ASIGNATARIO"],
+        fila["EMAIL"]
     ]
 
     for i, valor in enumerate(valores):
