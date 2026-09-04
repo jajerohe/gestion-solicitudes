@@ -602,7 +602,7 @@ for _, fila in df_filtrado.iterrows():
         fila["POD"],
         fila["ESTADO"],
         fila["ASIGNADO A"],
-        fila["ASIGNATARIO"],
+        fila["NOMBRE ASIGNATARIO"],
         fila["EMAIL"]
     ]
 
