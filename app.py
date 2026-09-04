@@ -253,7 +253,7 @@ st.markdown("""
 <style>
 /* Encabezados de la tabla */
 .tabla-header {
-    font-size: 10px !important;
+    font-size: 13px !important;
     font-weight: 700;
     line-height: 1.05;
     white-space: nowrap;
@@ -262,13 +262,14 @@ st.markdown("""
 
 /* Celdas */
 .tabla-cell {
-    font-size: 10px !important;
-    line-height: 1.1;
+    font-size: 12px !important;
+    line-height: 1;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    padding-top: 2px;
-    padding-bottom: 2px;
+    height: 22px;
+    padding: 0px !important;
+    margin: 0px !important;
 }
 
 /* Botones de acción */
@@ -282,7 +283,7 @@ div[data-testid="stButton"] > button {
 
 /* Separadores más compactos */
 hr {
-    margin: 3px 0px !important;
+    margin: 1px 0px !important;
 }
 </style>
 """, unsafe_allow_html=True)
