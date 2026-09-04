@@ -577,8 +577,8 @@ for col, title in zip(headers, [
     "PRODUCT OWNER",
     "STATUS",
     "ASIGNADO A",
-    "NOMBRE ASIGNATARIO",
-    "CORREO ASIGNATARIO",
+    "ASIGNATARIO",
+    "EMAIL",
     "GESTIÓN",
     "ACTUALIZAR"
 ]):
