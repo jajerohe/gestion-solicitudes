@@ -43,9 +43,9 @@ def obtener_solicitudes():
         db.execute(sql)
         registros = db.fetchall()
         columnas = [
-            "ID_SOLICITUD","TITULO","FECHA_APERTURA","SUBSERVICIO_AFECTADO",
-            "PRODUCT_OWNER","STATUS","ASIGNADO_A","NOMBRE_ASIGNATARIO",
-            "CORREO_ASIGNATARIO"
+            "SOLICITUD","TITULO","APERTURA","SERVICIO",
+            "POD","ESTADO","ASIGNADO A","NOMBRE ASIGNATARIO",
+            "EMAIL"
         ]
         return pd.DataFrame(registros, columns=columnas)
     finally:
