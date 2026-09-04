@@ -43,9 +43,9 @@ def obtener_solicitudes():
         db.execute(sql)
         registros = db.fetchall()
         columnas = [
-            "SOLICITUD","TITULO","APERTURA","SERVICIO",
-            "POD","ESTADO","ASIGNADO A","NOMBRE ASIGNATARIO",
-            "EMAIL"
+            "ID_SOLICITUD","TITULO","FECHA_APERTURA","SUBSERVICIO_AFECTADO",
+            "PRODUCT_OWNER","STATUS","ASIGNADO_A","NOMBRE_ASIGNATARIO",
+            "CORREO_ASIGNATARIO"
         ]
         return pd.DataFrame(registros, columns=columnas)
     finally:
@@ -588,22 +588,22 @@ st.divider()
 
 for _, fila in df_filtrado.iterrows():
 
-    sid = fila["SOLICITUD"]
+    sid = fila["ID_SOLICITUD"]
 
     cols = st.columns([
         1.0, 3.8, 1.5, 2.2, 1.8, 1.5, 1.0, 1.8, 2.7, 0.8, 0.9
     ])
 
     valores = [
-        fila["SOLICITUD"],
+        fila["ID_SOLICITUD"],
         fila["TITULO"],
-        fila["APERTURA"],
-        fila["SERVICIO"],
-        fila["POD"],
-        fila["ESTADO"],
-        fila["ASIGNADO A"],
-        fila["NOMBRE ASIGNATARIO"],
-        fila["EMAIL"]
+        fila["FECHA_APERTURA"],
+        fila["SUBSERVICIO_AFECTADO"],
+        fila["PRODUCT_OWNER"],
+        fila["STATUS"],
+        fila["ASIGNADO_A"],
+        fila["NOMBRE_ASIGNATARIO"],
+        fila["CORREO_ASIGNATARIO"]
     ]
 
     for i, valor in enumerate(valores):
