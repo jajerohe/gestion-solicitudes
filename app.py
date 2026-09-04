@@ -34,8 +34,7 @@ def obtener_solicitudes():
         sql = '''
             SELECT "ID_SOLICITUD","TITULO","FECHA_APERTURA",
                    "SUBSERVICIO_AFECTADO","PRODUCT_OWNER","STATUS",
-                   "ASIGNADO_A","NOMBRE_ASIGNATARIO","CORREO_ASIGNATARIO",
-                   "FECHA_CIERRE","CODIGO_CIERRE"
+                   "ASIGNADO_A","NOMBRE_ASIGNATARIO","CORREO_ASIGNATARIO"
             FROM public."Solicitudes"
             WHERE "CODIGO_CIERRE" IS NULL
               AND "FECHA_CIERRE" IS NULL
@@ -46,7 +45,7 @@ def obtener_solicitudes():
         columnas = [
             "ID_SOLICITUD","TITULO","FECHA_APERTURA","SUBSERVICIO_AFECTADO",
             "PRODUCT_OWNER","STATUS","ASIGNADO_A","NOMBRE_ASIGNATARIO",
-            "CORREO_ASIGNATARIO","FECHA_CIERRE","CODIGO_CIERRE"
+            "CORREO_ASIGNATARIO"
         ]
         return pd.DataFrame(registros, columns=columnas)
     finally:
