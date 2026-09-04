@@ -570,15 +570,15 @@ headers = st.columns([
 ])
 
 for col, title in zip(headers, [
-    "ID_SOLICITUD",
+    "ID",
     "TITULO",
-    "FECHA_APERTURA",
-    "SUBSERVICIO_AFECTADO",
-    "PRODUCT_OWNER",
+    "APERTURA",
+    "SERVICIO AFECTADO",
+    "PRODUCT OWNER",
     "STATUS",
-    "ASIGNADO_A",
-    "NOMBRE_ASIGNATARIO",
-    "CORREO_ASIGNATARIO",
+    "ASIGNADO A",
+    "NOMBRE ASIGNATARIO",
+    "CORREO ASIGNATARIO",
     "GESTIÓN",
     "ACTUALIZAR"
 ]):
