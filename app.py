@@ -34,8 +34,7 @@ def obtener_solicitudes():
         sql = '''
             SELECT "ID_SOLICITUD","TITULO","FECHA_APERTURA",
                    "SUBSERVICIO_AFECTADO","PRODUCT_OWNER","STATUS",
-                   "ASIGNADO_A","NOMBRE_ASIGNATARIO","CORREO_ASIGNATARIO",
-                   "FECHA_CIERRE","CODIGO_CIERRE"
+                   "ASIGNADO_A","NOMBRE_ASIGNATARIO","CORREO_ASIGNATARIO"
             FROM public."Solicitudes"
             WHERE "CODIGO_CIERRE" IS NULL
               AND "FECHA_CIERRE" IS NULL
@@ -46,7 +45,7 @@ def obtener_solicitudes():
         columnas = [
             "ID_SOLICITUD","TITULO","FECHA_APERTURA","SUBSERVICIO_AFECTADO",
             "PRODUCT_OWNER","STATUS","ASIGNADO_A","NOMBRE_ASIGNATARIO",
-            "CORREO_ASIGNATARIO","FECHA_CIERRE","CODIGO_CIERRE"
+            "CORREO_ASIGNATARIO"
         ]
         return pd.DataFrame(registros, columns=columnas)
     finally:
@@ -137,28 +136,9 @@ if archivo_excel is not None:
             with a:
                 st.metric("Registros filtrados", len(preview))
             with b:
-                if "ORIGEN" in preview.columns:
-                    generales_preview = len(
-                        preview[
-                            preview["ORIGEN"].astype(str).str.upper()
-                            == "DETALLE_GENERAL"
-                        ]
-                    )
-                else:
-                    generales_preview = 0
-                st.metric("DETALLE_GENERAL", generales_preview)
-
+                st.metric("DETALLE_GENERAL", len(preview[preview["HOJA"] == "DETALLE_GENERAL"]))
             with c:
-                if "ORIGEN" in preview.columns:
-                    funcionales_preview = len(
-                        preview[
-                            preview["ORIGEN"].astype(str).str.upper()
-                            == "DETALLE_FUNCIONALES"
-                        ]
-                    )
-                else:
-                    funcionales_preview = 0
-                st.metric("DETALLE_FUNCIONALES", funcionales_preview)
+                st.metric("DETALLE_FUNCIONALES", len(preview[preview["HOJA"] == "DETALLE_FUNCIONALES"]))
 
             if not preview.empty:
                 st.subheader("👥 Product Owner encontrados")
@@ -265,33 +245,81 @@ else:
     df_filtrado = df
 
 st.subheader(f"Solicitudes ({len(df_filtrado)})")
-st.dataframe(df_filtrado, use_container_width=True, hide_index=True)
 
-if not df_filtrado.empty:
+if "solicitud_seleccionada" not in st.session_state:
+    st.session_state.solicitud_seleccionada = None
+if "accion_solicitud" not in st.session_state:
+    st.session_state.accion_solicitud = None
+
+def seleccionar_solicitud(id_solicitud, accion):
+    st.session_state.solicitud_seleccionada = id_solicitud
+    st.session_state.accion_solicitud = accion
+
+# Encabezados de la tabla
+headers = st.columns([1.0, 3.8, 1.5, 2.2, 1.8, 1.5, 1.0, 1.8, 2.7, 0.75, 0.85])
+for col, title in zip(headers, [
+    "ID_SOLICITUD", "TITULO", "FECHA_APERTURA", "SUBSERVICIO_AFECTADO",
+    "PRODUCT_OWNER", "STATUS", "ASIGNADO_A", "NOMBRE_ASIGNATARIO",
+    "CORREO_ASIGNATARIO", "GESTIÓN", "ACTUALIZAR"
+]):
+    col.markdown(f"**{title}**")
+
+st.divider()
+
+for _, fila in df_filtrado.iterrows():
+    sid = fila["ID_SOLICITUD"]
+    cols = st.columns([1.0, 3.8, 1.5, 2.2, 1.8, 1.5, 1.0, 1.8, 2.7, 0.75, 0.85])
+
+    valores = [
+        fila["ID_SOLICITUD"], fila["TITULO"], fila["FECHA_APERTURA"],
+        fila["SUBSERVICIO_AFECTADO"], fila["PRODUCT_OWNER"], fila["STATUS"],
+        fila["ASIGNADO_A"], fila["NOMBRE_ASIGNATARIO"], fila["CORREO_ASIGNATARIO"]
+    ]
+
+    for i, valor in enumerate(valores):
+        with cols[i]:
+            if i == 2 and pd.notna(valor):
+                valor = pd.to_datetime(valor).strftime("%Y-%m-%d %H:%M:%S")
+            st.write(str(valor))
+
+    with cols[9]:
+        if st.button("➕", key=f"gestion_{sid}", help=f"Adicionar gestión a {sid}", use_container_width=True):
+            seleccionar_solicitud(sid, "gestion")
+            st.rerun()
+
+    with cols[10]:
+        if st.button("➕", key=f"actualizar_{sid}", help=f"Actualizar solicitud {sid}", use_container_width=True):
+            seleccionar_solicitud(sid, "actualizar")
+            st.rerun()
+
     st.divider()
-    st.subheader("📌 Seleccionar solicitud")
-    id_seleccionado = st.selectbox("Solicitud", df_filtrado["ID_SOLICITUD"].tolist())
-    solicitud = df_filtrado[
-        df_filtrado["ID_SOLICITUD"] == id_seleccionado
-    ].iloc[0]
 
+id_seleccionado = st.session_state.solicitud_seleccionada
+
+if id_seleccionado is not None and id_seleccionado in df_filtrado["ID_SOLICITUD"].tolist():
+
+    solicitud = df_filtrado[df_filtrado["ID_SOLICITUD"] == id_seleccionado].iloc[0]
+
+    st.divider()
     st.subheader("📄 Información de la solicitud")
+
     a, b, c = st.columns(3)
     with a:
-        st.markdown(f"**ID_SOLICITUD**  \n{solicitud['ID_SOLICITUD']}")
-        st.markdown(f"**TÍTULO**  \n{solicitud['TITULO']}")
-        st.markdown(f"**SUBSERVICIO AFECTADO**  \n{solicitud['SUBSERVICIO_AFECTADO']}")
+        st.markdown(f"**ID_SOLICITUD**  \\n{solicitud['ID_SOLICITUD']}")
+        st.markdown(f"**TÍTULO**  \\n{solicitud['TITULO']}")
+        st.markdown(f"**SUBSERVICIO AFECTADO**  \\n{solicitud['SUBSERVICIO_AFECTADO']}")
     with b:
-        st.markdown(f"**PRODUCT OWNER**  \n{solicitud['PRODUCT_OWNER']}")
-        st.markdown(f"**ASIGNADO A**  \n{solicitud['ASIGNADO_A']}")
-        st.markdown(f"**NOMBRE ASIGNATARIO**  \n{solicitud['NOMBRE_ASIGNATARIO']}")
+        st.markdown(f"**PRODUCT OWNER**  \\n{solicitud['PRODUCT_OWNER']}")
+        st.markdown(f"**ASIGNADO A**  \\n{solicitud['ASIGNADO_A']}")
+        st.markdown(f"**NOMBRE ASIGNATARIO**  \\n{solicitud['NOMBRE_ASIGNATARIO']}")
     with c:
-        st.markdown(f"**CORREO ASIGNATARIO**  \n{solicitud['CORREO_ASIGNATARIO']}")
-        st.markdown(f"**ESTADO**  \n{solicitud['STATUS']}")
-        st.markdown(f"**FECHA APERTURA**  \n{solicitud['FECHA_APERTURA']}")
+        st.markdown(f"**CORREO ASIGNATARIO**  \\n{solicitud['CORREO_ASIGNATARIO']}")
+        st.markdown(f"**ESTADO**  \\n{solicitud['STATUS']}")
+        st.markdown(f"**FECHA APERTURA**  \\n{solicitud['FECHA_APERTURA']}")
 
     st.divider()
     st.subheader("📜 Historial de gestiones")
+
     try:
         gestiones = obtener_gestiones(id_seleccionado)
         if not gestiones.empty:
@@ -302,178 +330,223 @@ if not df_filtrado.empty:
         st.error("❌ Error consultando el historial.")
         st.exception(e)
 
-    st.divider()
-    st.subheader("📝 Nueva gestión")
-    with st.form("form_gestion"):
-        # Selector visual de fecha y hora.
-        # La fecha se selecciona mediante calendario y la hora mediante
-        # un control independiente de hora/minutos/segundos.
-        ahora = pd.Timestamp.now()
+    if st.session_state.accion_solicitud == "gestion":
 
-        c_fecha, c_hora = st.columns(2)
+        st.divider()
+        st.subheader("📝 Nueva gestión")
 
-        with c_fecha:
-            fecha_seleccionada = st.date_input(
-                "Fecha de gestión",
-                value=ahora.date(),
-                format="DD/MM/YYYY"
+        with st.form("form_gestion"):
+            ahora = pd.Timestamp.now()
+            c_fecha, c_hora = st.columns(2)
+
+            with c_fecha:
+                fecha_seleccionada = st.date_input(
+                    "Fecha de gestión", value=ahora.date(), format="DD/MM/YYYY"
+                )
+
+            with c_hora:
+                hora_seleccionada = st.time_input(
+                    "Hora de gestión 🕐",
+                    value=ahora.time().replace(microsecond=0),
+                    step=1, format="24h"
+                )
+
+            observacion = st.text_area(
+                "Observación",
+                placeholder="Digite la observación de la gestión...",
+                height=150
             )
 
-        with c_hora:
-            hora_seleccionada = st.time_input(
-                "Hora de gestión 🕐",
-                value=ahora.time().replace(microsecond=0),
-                step=1,
-                format="24h"
-            )
+            c1, c2 = st.columns(2)
+            with c1:
+                guardar = st.form_submit_button("💾 Guardar Gestión", use_container_width=True)
+            with c2:
+                cancelar = st.form_submit_button("❌ Cancelar", use_container_width=True)
 
-        observacion = st.text_area(
-            "Observación",
-            placeholder="Digite la observación de la gestión...",
-            height=150
-        )
-        guardar = st.form_submit_button("💾 Guardar Gestión")
+        if cancelar:
+            st.session_state.accion_solicitud = None
+            st.rerun()
 
-    if guardar:
-        observacion = observacion.strip()
-        if not observacion:
-            st.warning("⚠️ Debe ingresar una observación.")
-            st.stop()
+        if guardar:
+            observacion = observacion.strip()
 
-        try:
-            # Combinar la fecha seleccionada en el calendario con la hora.
-            fecha = pd.Timestamp.combine(
-                fecha_seleccionada,
-                hora_seleccionada
-            ).to_pydatetime()
-        except Exception:
-            st.error("❌ La fecha y hora no tienen un formato válido.")
-            st.stop()
-
-        db = Database()
-        try:
-            db.conectar()
-            db.execute('''
-                SELECT 1 FROM public."Gestiones"
-                WHERE "ID_SOLICITUD" = %s
-                  AND "OBSERVACION" = %s
-                LIMIT 1
-            ''', (id_seleccionado, observacion))
-
-            if db.fetchone():
-                st.warning("⚠️ Esta observación ya existe para esta solicitud.")
+            if not observacion:
+                st.warning("⚠️ Debe ingresar una observación.")
                 st.stop()
 
-            db.execute('''
-                INSERT INTO public."Gestiones"
-                ("FECHA_GESTION","ID_SOLICITUD","OBSERVACION")
-                VALUES (%s,%s,%s)
-            ''', (fecha, id_seleccionado, observacion))
-            db.commit()
-            st.success("✅ Gestión guardada correctamente.")
-        except Exception as e:
-            db.rollback()
-            st.error("❌ No fue posible guardar la gestión.")
-            st.exception(e)
-        finally:
-            db.cerrar()
-        st.rerun()
+            try:
+                fecha = pd.Timestamp.combine(
+                    fecha_seleccionada, hora_seleccionada
+                ).to_pydatetime()
+            except Exception:
+                st.error("❌ La fecha y hora no tienen un formato válido.")
+                st.stop()
 
-    st.divider()
-    st.subheader("⚙️ Actualizar solicitud")
+            db = Database()
 
-    estados = [
-        "Cancelled","Categorize","Fulfilled","In Progress","Open","Pending"
-        "Pending Customer","Pending Force","Pending Parent Incident","Pending Vendor","Planned",
-        "Ready","Resolved","Suspended","Work In Progress"
-    ]
-    codigos = [
-        "Cancelado por incumplimiento de politicas",
-        "Cancelado por el usuario",
-        "Resuelto por soporte tecnico"
-    ]
+            try:
+                db.conectar()
 
-    status_opciones = [""] + estados
-    codigo_opciones = [""] + codigos
-    status_actual = solicitud["STATUS"]
-    codigo_actual = solicitud["CODIGO_CIERRE"]
-    fecha_actual = solicitud["FECHA_CIERRE"]
+                db.execute(
+                    '''
+                    SELECT 1 FROM public."Gestiones"
+                    WHERE "ID_SOLICITUD" = %s
+                      AND "OBSERVACION" = %s
+                    LIMIT 1
+                    ''',
+                    (id_seleccionado, observacion)
+                )
 
-    i_status = status_opciones.index(status_actual) if status_actual in status_opciones else 0
-    i_codigo = codigo_opciones.index(codigo_actual) if codigo_actual in codigo_opciones else 0
+                if db.fetchone():
+                    st.warning("⚠️ Esta observación ya existe para esta solicitud.")
+                    st.stop()
 
-    fecha_texto = (
-        pd.to_datetime(fecha_actual).strftime("%Y-%m-%d %H:%M:%S")
-        if pd.notna(fecha_actual) else ""
-    )
+                db.execute(
+                    '''
+                    INSERT INTO public."Gestiones"
+                    ("FECHA_GESTION","ID_SOLICITUD","OBSERVACION")
+                    VALUES (%s,%s,%s)
+                    ''',
+                    (fecha, id_seleccionado, observacion)
+                )
 
-    # Valores iniciales para el selector de fecha/hora.
-    if fecha_texto:
-        fecha_cierre_inicial = pd.to_datetime(fecha_texto)
-    else:
-        fecha_cierre_inicial = pd.Timestamp.now()
+                db.commit()
+                st.success("✅ Gestión guardada correctamente.")
+                st.session_state.accion_solicitud = None
 
-    with st.form("form_actualizar"):
-        a, b = st.columns(2)
-        with a:
-            nuevo_status = st.selectbox("Estado", status_opciones, index=i_status)
-        with b:
-            nuevo_codigo = st.selectbox("Código de cierre", codigo_opciones, index=i_codigo)
+            except Exception as e:
+                db.rollback()
+                st.error("❌ No fue posible guardar la gestión.")
+                st.exception(e)
 
-        # Mismo modelo utilizado en "Nueva gestión":
-        # calendario para la fecha + selector para hora, minutos y segundos.
-        c_fecha, c_hora = st.columns(2)
+            finally:
+                db.cerrar()
 
-        with c_fecha:
-            fecha_cierre_fecha = st.date_input(
-                "Fecha de cierre",
-                value=fecha_cierre_inicial.date(),
-                format="DD/MM/YYYY"
-            )
+            st.rerun()
 
-        with c_hora:
-            fecha_cierre_hora = st.time_input(
-                "Hora de cierre 🕐",
-                value=fecha_cierre_inicial.time().replace(microsecond=0),
-                step=1,
-                format="24h"
-            )
+    elif st.session_state.accion_solicitud == "actualizar":
 
-        actualizar = st.form_submit_button("🔄 Actualizar Solicitud")
+        st.divider()
+        st.subheader("⚙️ Actualizar solicitud")
 
-    if actualizar:
-        try:
-            fecha_db = pd.Timestamp.combine(
-                fecha_cierre_fecha,
-                fecha_cierre_hora
-            ).to_pydatetime()
-        except Exception:
-            st.warning("⚠️ La fecha y hora de cierre no tienen un formato válido.")
-            st.stop()
+        estados = [
+            "Cancelled", "Categorize", "Fulfilled", "In Progress", "Open",
+            "Pending", "Pending Customer", "Pending Force",
+            "Pending Parent Incident", "Pending Vendor", "Planned", "Ready",
+            "Resolved", "Suspended", "Work In Progress"
+        ]
 
-        db = Database()
-        try:
-            db.conectar()
-            db.execute('''
-                UPDATE public."Solicitudes"
-                SET "FECHA_CIERRE" = %s,
-                    "STATUS" = %s,
-                    "CODIGO_CIERRE" = %s
-                WHERE "ID_SOLICITUD" = %s
-            ''', (
-                fecha_db,
-                nuevo_status or None,
-                nuevo_codigo or None,
-                id_seleccionado
-            ))
-            db.commit()
-            st.success("✅ La solicitud fue actualizada correctamente.")
-        except Exception as e:
-            db.rollback()
-            st.error("❌ No fue posible actualizar la solicitud.")
-            st.exception(e)
-        finally:
-            db.cerrar()
-        st.rerun()
-else:
+        codigos = [
+            "Cancelado por incumplimiento de politicas",
+            "Cancelado por el usuario",
+            "Resuelto por soporte tecnico"
+        ]
+
+        status_opciones = [""] + estados
+        codigo_opciones = [""] + codigos
+
+        status_actual = solicitud["STATUS"]
+        codigo_actual = solicitud.get("CODIGO_CIERRE", None)
+        fecha_actual = solicitud.get("FECHA_CIERRE", None)
+
+        i_status = status_opciones.index(status_actual) if status_actual in status_opciones else 0
+        i_codigo = codigo_opciones.index(codigo_actual) if codigo_actual in codigo_opciones else 0
+
+        fecha_inicial = (
+            pd.to_datetime(fecha_actual)
+            if pd.notna(fecha_actual)
+            else pd.Timestamp.now()
+        )
+
+        with st.form("form_actualizar"):
+            a, b = st.columns(2)
+
+            with a:
+                nuevo_status = st.selectbox(
+                    "Estado", status_opciones, index=i_status
+                )
+
+            with b:
+                nuevo_codigo = st.selectbox(
+                    "Código de cierre", codigo_opciones, index=i_codigo
+                )
+
+            c_fecha, c_hora = st.columns(2)
+
+            with c_fecha:
+                fecha_cierre_fecha = st.date_input(
+                    "Fecha de cierre",
+                    value=fecha_inicial.date(),
+                    format="DD/MM/YYYY"
+                )
+
+            with c_hora:
+                fecha_cierre_hora = st.time_input(
+                    "Hora de cierre 🕐",
+                    value=fecha_inicial.time().replace(microsecond=0),
+                    step=1, format="24h"
+                )
+
+            c1, c2 = st.columns(2)
+
+            with c1:
+                actualizar = st.form_submit_button(
+                    "🔄 Actualizar Solicitud", use_container_width=True
+                )
+
+            with c2:
+                cancelar = st.form_submit_button(
+                    "❌ Cancelar", use_container_width=True
+                )
+
+        if cancelar:
+            st.session_state.accion_solicitud = None
+            st.rerun()
+
+        if actualizar:
+
+            try:
+                fecha_db = pd.Timestamp.combine(
+                    fecha_cierre_fecha, fecha_cierre_hora
+                ).to_pydatetime()
+            except Exception:
+                st.warning("⚠️ La fecha y hora de cierre no tienen un formato válido.")
+                st.stop()
+
+            db = Database()
+
+            try:
+                db.conectar()
+
+                db.execute(
+                    '''
+                    UPDATE public."Solicitudes"
+                    SET "FECHA_CIERRE" = %s,
+                        "STATUS" = %s,
+                        "CODIGO_CIERRE" = %s
+                    WHERE "ID_SOLICITUD" = %s
+                    ''',
+                    (
+                        fecha_db,
+                        nuevo_status or None,
+                        nuevo_codigo or None,
+                        id_seleccionado
+                    )
+                )
+
+                db.commit()
+                st.success("✅ La solicitud fue actualizada correctamente.")
+                st.session_state.accion_solicitud = None
+
+            except Exception as e:
+                db.rollback()
+                st.error("❌ No fue posible actualizar la solicitud.")
+                st.exception(e)
+
+            finally:
+                db.cerrar()
+
+            st.rerun()
+
+elif df_filtrado.empty:
     st.info("ℹ️ No existen solicitudes que coincidan con el criterio de búsqueda.")
