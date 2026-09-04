@@ -580,7 +580,7 @@ for col, title in zip(headers, [
     "ASIGNATARIO",
     "EMAIL",
     "GESTIÓN",
-    "ACTUALIZAR"
+    "ACTUAL."
 ]):
     col.markdown(f"**{title}**")
 
