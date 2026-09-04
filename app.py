@@ -34,7 +34,8 @@ def obtener_solicitudes():
         sql = '''
             SELECT "ID_SOLICITUD","TITULO","FECHA_APERTURA",
                    "SUBSERVICIO_AFECTADO","PRODUCT_OWNER","STATUS",
-                   "ASIGNADO_A","NOMBRE_ASIGNATARIO","CORREO_ASIGNATARIO"
+                   "ASIGNADO_A","NOMBRE_ASIGNATARIO","CORREO_ASIGNATARIO",
+                   "FECHA_CIERRE","CODIGO_CIERRE"
             FROM public."Solicitudes"
             WHERE "CODIGO_CIERRE" IS NULL
               AND "FECHA_CIERRE" IS NULL
@@ -45,7 +46,7 @@ def obtener_solicitudes():
         columnas = [
             "ID_SOLICITUD","TITULO","FECHA_APERTURA","SUBSERVICIO_AFECTADO",
             "PRODUCT_OWNER","STATUS","ASIGNADO_A","NOMBRE_ASIGNATARIO",
-            "CORREO_ASIGNATARIO"
+            "CORREO_ASIGNATARIO","FECHA_CIERRE","CODIGO_CIERRE"
         ]
         return pd.DataFrame(registros, columns=columnas)
     finally:
@@ -136,9 +137,28 @@ if archivo_excel is not None:
             with a:
                 st.metric("Registros filtrados", len(preview))
             with b:
-                st.metric("DETALLE_GENERAL", len(preview[preview["HOJA"] == "DETALLE_GENERAL"]))
+                if "ORIGEN" in preview.columns:
+                    generales_preview = len(
+                        preview[
+                            preview["ORIGEN"].astype(str).str.upper()
+                            == "DETALLE_GENERAL"
+                        ]
+                    )
+                else:
+                    generales_preview = 0
+                st.metric("DETALLE_GENERAL", generales_preview)
+
             with c:
-                st.metric("DETALLE_FUNCIONALES", len(preview[preview["HOJA"] == "DETALLE_FUNCIONALES"]))
+                if "ORIGEN" in preview.columns:
+                    funcionales_preview = len(
+                        preview[
+                            preview["ORIGEN"].astype(str).str.upper()
+                            == "DETALLE_FUNCIONALES"
+                        ]
+                    )
+                else:
+                    funcionales_preview = 0
+                st.metric("DETALLE_FUNCIONALES", funcionales_preview)
 
             if not preview.empty:
                 st.subheader("👥 Product Owner encontrados")
