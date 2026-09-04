@@ -37,7 +37,7 @@ def obtener_solicitudes():
                    "ASIGNADO_A","NOMBRE_ASIGNATARIO","CORREO_ASIGNATARIO",
                    "FECHA_CIERRE","CODIGO_CIERRE"
             FROM public."Solicitudes"
-            WHERE "STATUS" NOT IN ('RESOLVED', 'COMPLETADO')
+            WHERE "CODIGO_CIERRE" IS NULL
               AND "FECHA_CIERRE" IS NULL
             ORDER BY "FECHA_APERTURA" ASC
         '''
