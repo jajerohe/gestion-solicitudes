@@ -1,5 +1,7 @@
 import streamlit as st
 import pandas as pd
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 from database import Database
 from excel_web import analizar_excel, cargar_excel
@@ -56,6 +58,7 @@ def obtener_gestiones(id_solicitud):
     db = Database()
     try:
         db.conectar()
+        db.execute("SET TIME ZONE 'America/Bogota'")
         db.execute('''
             SELECT "FECHA_GESTION","OBSERVACION"
             FROM public."Gestiones"
@@ -297,7 +300,7 @@ def ventana_gestion(id_solicitud):
 
     with st.form(f"form_gestion_popup_{id_solicitud}"):
 
-        ahora = pd.Timestamp.now()
+        ahora = datetime.now(ZoneInfo('America/Bogota'))
         c_fecha, c_hora = st.columns(2)
 
         with c_fecha:
@@ -334,15 +337,18 @@ def ventana_gestion(id_solicitud):
             st.warning("⚠️ Debe ingresar una observación.")
             return
 
-        fecha = pd.Timestamp.combine(
+        # La hora digitada se interpreta como hora de Colombia.
+        fecha = datetime.combine(
             fecha_seleccionada,
             hora_seleccionada
-        ).to_pydatetime()
+        ).replace(tzinfo=ZoneInfo("America/Bogota"))
 
         db = Database()
 
         try:
             db.conectar()
+
+            db.execute("SET TIME ZONE 'America/Bogota'")
 
             db.execute(
                 """
