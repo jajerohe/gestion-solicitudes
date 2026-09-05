@@ -387,10 +387,65 @@ def ventana_gestion(id_solicitud):
 # ============================================================
 # VENTANA TIPO OVERLAY PARA VER GESTIONES
 # ============================================================
-@st.dialog("👁️ Ver gestión", width="large")
+@st.dialog("👁️ Información de la solicitud", width="large")
 def ventana_ver_gestion(id_solicitud):
 
-    st.markdown(f"### 📋 Gestiones de la solicitud {id_solicitud}")
+    solicitud = df_filtrado[
+        df_filtrado["ID_SOLICITUD"] == id_solicitud
+    ].iloc[0]
+
+    # ========================================================
+    # INFORMACIÓN DE LA SOLICITUD
+    # ========================================================
+    st.markdown("### 📄 Información de la solicitud")
+
+    a, b, c = st.columns(3)
+
+    with a:
+        st.markdown(
+            f"**ID_SOLICITUD**  \n{solicitud['ID_SOLICITUD']}"
+        )
+        st.markdown(
+            f"**TÍTULO**  \n{solicitud['TITULO']}"
+        )
+        st.markdown(
+            f"**SUBSERVICIO AFECTADO**  \n{solicitud['SUBSERVICIO_AFECTADO']}"
+        )
+
+    with b:
+        st.markdown(
+            f"**PRODUCT OWNER**  \n{solicitud['PRODUCT_OWNER']}"
+        )
+        st.markdown(
+            f"**ASIGNADO A**  \n{solicitud['ASIGNADO_A']}"
+        )
+        st.markdown(
+            f"**NOMBRE ASIGNATARIO**  \n{solicitud['NOMBRE_ASIGNATARIO']}"
+        )
+
+    with c:
+        st.markdown(
+            f"**CORREO ASIGNATARIO**  \n{solicitud['CORREO_ASIGNATARIO']}"
+        )
+        st.markdown(
+            f"**ESTADO**  \n{solicitud['STATUS']}"
+        )
+
+        fecha_apertura = solicitud['FECHA_APERTURA']
+        if pd.notna(fecha_apertura):
+            fecha_apertura = pd.to_datetime(
+                fecha_apertura
+            ).strftime("%Y-%m-%d %H:%M:%S")
+
+        st.markdown(
+            f"**FECHA APERTURA**  \n{fecha_apertura}"
+        )
+
+    # ========================================================
+    # GESTIONES REGISTRADAS
+    # ========================================================
+    st.divider()
+    st.markdown("### 📝 Gestiones registradas")
 
     try:
         gestiones = obtener_gestiones(id_solicitud)
@@ -411,6 +466,8 @@ def ventana_ver_gestion(id_solicitud):
             errors="coerce"
         ).dt.strftime("%Y-%m-%d %H:%M:%S")
 
+    # Se muestran únicamente Fecha de gestión y Observación.
+    # ID_GESTION NO se consulta ni se muestra.
     st.dataframe(
         gestiones_mostrar,
         use_container_width=True,
