@@ -385,6 +385,50 @@ def ventana_gestion(id_solicitud):
 
 
 # ============================================================
+# VENTANA TIPO OVERLAY PARA VER GESTIONES
+# ============================================================
+@st.dialog("👁️ Ver gestión", width="large")
+def ventana_ver_gestion(id_solicitud):
+
+    st.markdown(f"### 📋 Gestiones de la solicitud {id_solicitud}")
+
+    try:
+        gestiones = obtener_gestiones(id_solicitud)
+    except Exception as e:
+        st.error("❌ No fue posible consultar las gestiones de la solicitud.")
+        st.exception(e)
+        return
+
+    if gestiones.empty:
+        st.info("ℹ️ Esta solicitud no tiene gestiones registradas.")
+        return
+
+    gestiones_mostrar = gestiones.copy()
+
+    if "FECHA_GESTION" in gestiones_mostrar.columns:
+        gestiones_mostrar["FECHA_GESTION"] = pd.to_datetime(
+            gestiones_mostrar["FECHA_GESTION"],
+            errors="coerce"
+        ).dt.strftime("%Y-%m-%d %H:%M:%S")
+
+    st.dataframe(
+        gestiones_mostrar,
+        use_container_width=True,
+        hide_index=True,
+        column_config={
+            "FECHA_GESTION": st.column_config.TextColumn(
+                "Fecha gestión",
+                width="medium"
+            ),
+            "OBSERVACION": st.column_config.TextColumn(
+                "Observación",
+                width="large"
+            )
+        }
+    )
+
+
+# ============================================================
 # VENTANA TIPO OVERLAY PARA ACTUALIZAR SOLICITUD
 # ============================================================
 @st.dialog("⚙️ Actualizar solicitud", width="large")
@@ -621,8 +665,8 @@ hr {
 # TABLA PRINCIPAL
 # ============================================================
 anchos_tabla = [
-    1.0, 3.8, 1.5, 2.2, 1.8, 1.5,
-    1.0, 1.8, 2.7, 0.8, 0.9
+    1.0, 3.5, 1.5, 2.1, 1.8, 1.5,
+    1.0, 1.8, 2.5, 0.8, 0.9, 0.9
 ]
 
 headers = st.columns(anchos_tabla)
@@ -638,6 +682,7 @@ titulos_tabla = [
     "NOMBRE_ASIGNATARIO",
     "CORREO_ASIGNATARIO",
     "GESTIÓN",
+    "VER GESTIÓN",
     "ACTUALIZAR"
 ]
 
@@ -696,8 +741,18 @@ for _, fila in df_filtrado.iterrows():
         ):
             ventana_gestion(sid)
 
-    # Botón para actualizar solicitud
+    # Botón para ver las gestiones registradas
     with cols[10]:
+        if st.button(
+            "👁️",
+            key=f"ver_gestion_{sid}",
+            help=f"Ver gestión de {sid}",
+            use_container_width=True
+        ):
+            ventana_ver_gestion(sid)
+
+    # Botón para actualizar solicitud
+    with cols[11]:
         if st.button(
             "➕",
             key=f"actualizar_{sid}",
