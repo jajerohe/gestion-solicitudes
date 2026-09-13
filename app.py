@@ -571,7 +571,8 @@ def ventana_actualizar(id_solicitud):
     codigos = [
         "Cancelado por incumplimiento de politicas",
         "Cancelado por el usuario",
-        "Resuelto por soporte tecnico"
+        "Resuelto por soporte funcional"
+        "Resuelto por soporte técnico"
     ]
 
     status_opciones = [""] + estados
