@@ -7,27 +7,15 @@ from database import Database
 from excel_web import analizar_excel, cargar_excel
 
 st.set_page_config(
-    page_title="Gestión de Solicitudes - ECP",
+    page_title="SIGPI",
     page_icon="📋",
     layout="wide"
 )
 
-st.markdown(
-    """
-    <div style="display: flex; align-items: center; gap: 15px;">
-        <span style="font-size: 42px;">📋</span>
-        <span style="font-size: 42px; font-weight: 700; color: #24344D;">
-            Gestión de Solicitudes - ECP
-        </span>
-    </div>
-
-    <div style="margin-left: 2px; margin-top: 2px;
-                color: #666; font-size: 13px;">
-        Desarrollado por <b>Janssen Rodríguez</b>
-    </div>
-    """,
-    unsafe_allow_html=True
-)
+# ============================================================
+# ENCABEZADO SIGPI
+# ============================================================
+st.image("Logo_SIGPI.png", width=900)
 
 def obtener_solicitudes():
     db = Database()
