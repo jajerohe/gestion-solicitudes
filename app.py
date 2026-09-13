@@ -311,11 +311,11 @@ def ventana_gestion(id_solicitud):
             )
 
         with c_hora:
-            hora_seleccionada = st.time_input(
+            hora_gestion_texto = st.text_input(
                 "Hora de gestión 🕐",
-                value=ahora.time().replace(microsecond=0),
-                step=1,
-                format="24h"
+                value=ahora.strftime("%H:%M:%S"),
+                max_chars=8,
+                help="Digite la hora exactamente en formato HH:MM:SS. Ejemplo: 15:30:42"
             )
 
         observacion = st.text_area(
@@ -337,12 +337,18 @@ def ventana_gestion(id_solicitud):
             st.warning("⚠️ Debe ingresar una observación.")
             return
 
-        # Guardar EXACTAMENTE la fecha y hora seleccionadas por el usuario.
-        # No se aplica ninguna conversión de zona horaria.
-        fecha_db = (
-            f"{fecha_seleccionada:%Y-%m-%d} "
-            f"{hora_seleccionada:%H:%M:%S}"
-        )
+        # Guardar EXACTAMENTE la fecha y hora digitadas por el usuario.
+        hora_gestion_texto = hora_gestion_texto.strip()
+
+        try:
+            hora_gestion = datetime.strptime(
+                hora_gestion_texto, "%H:%M:%S"
+            ).strftime("%H:%M:%S")
+        except ValueError:
+            st.error("❌ La hora de gestión debe tener el formato HH:MM:SS. Ejemplo: 15:30:42")
+            return
+
+        fecha_db = f"{fecha_seleccionada:%Y-%m-%d} {hora_gestion}"
 
         db = Database()
 
@@ -616,11 +622,11 @@ def ventana_actualizar(id_solicitud):
             )
 
         with c_hora:
-            fecha_cierre_hora = st.time_input(
+            hora_cierre_texto = st.text_input(
                 "Hora de cierre 🕐",
-                value=fecha_inicial.time().replace(microsecond=0),
-                step=1,
-                format="24h"
+                value=fecha_inicial.strftime("%H:%M:%S"),
+                max_chars=8,
+                help="Digite la hora exactamente en formato HH:MM:SS. Ejemplo: 18:12:34"
             )
 
         actualizar = st.form_submit_button(
@@ -630,12 +636,18 @@ def ventana_actualizar(id_solicitud):
 
     if actualizar:
 
-        # Guardar EXACTAMENTE la fecha y hora seleccionadas por el usuario.
-        # No se aplica ninguna conversión de zona horaria.
-        fecha_cierre_db = (
-            f"{fecha_cierre_fecha:%Y-%m-%d} "
-            f"{fecha_cierre_hora:%H:%M:%S}"
-        )
+        # Guardar EXACTAMENTE la fecha y hora digitadas por el usuario.
+        hora_cierre_texto = hora_cierre_texto.strip()
+
+        try:
+            hora_cierre = datetime.strptime(
+                hora_cierre_texto, "%H:%M:%S"
+            ).strftime("%H:%M:%S")
+        except ValueError:
+            st.error("❌ La hora de cierre debe tener el formato HH:MM:SS. Ejemplo: 18:12:34")
+            return
+
+        fecha_cierre_db = f"{fecha_cierre_fecha:%Y-%m-%d} {hora_cierre}"
 
         db = Database()
 
