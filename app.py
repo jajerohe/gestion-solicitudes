@@ -638,16 +638,21 @@ def ventana_actualizar(id_solicitud):
         try:
             db.conectar()
 
+            # Guardar exactamente la fecha y hora digitadas por el usuario.
+            # Se envía como texto YYYY-MM-DD HH:MM:SS y PostgreSQL la convierte
+            # explícitamente a timestamp, evitando conversiones de zona horaria.
+            fecha_cierre_db = fecha_db.strftime("%Y-%m-%d %H:%M:%S")
+
             db.execute(
                 """
                 UPDATE public."Solicitudes"
-                SET "FECHA_CIERRE" = %s,
+                SET "FECHA_CIERRE" = CAST(%s AS timestamp),
                     "STATUS" = %s,
                     "CODIGO_CIERRE" = %s
                 WHERE "ID_SOLICITUD" = %s
                 """,
                 (
-                    fecha_db,
+                    fecha_cierre_db,
                     nuevo_status or None,
                     nuevo_codigo or None,
                     id_solicitud
