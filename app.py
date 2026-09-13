@@ -13,9 +13,28 @@ st.set_page_config(
 )
 
 # ============================================================
-# ENCABEZADO SIGPI
+# ENCABEZADO: LOGO A LA IZQUIERDA + CARGA DE EXCEL A LA DERECHA
 # ============================================================
-st.image("Logo_SIGPI.png", width=500)
+col_logo, col_carga = st.columns([1.25, 1], gap="large")
+
+with col_logo:
+    st.image("Logo_SIGPI.png", width=500)
+
+with col_carga:
+    st.markdown(
+        '<div style="margin-top: 28px;">'
+        '<h3 style="margin-bottom: 8px; color: #24344D;">'
+        '📤 Cargar solicitudes desde Excel'
+        '</h3>'
+        '</div>',
+        unsafe_allow_html=True
+    )
+
+    archivo_excel = st.file_uploader(
+        "Seleccione un archivo Excel",
+        type=["xlsx"],
+        help="Se procesarán únicamente DETALLE_GENERAL y DETALLE_FUNCIONALES."
+    )
 
 def obtener_solicitudes():
     db = Database()
@@ -97,13 +116,6 @@ def guardar_auditoria(
         usuario_carga,
         fecha_actual
     ))
-
-st.subheader("📤 Cargar solicitudes desde Excel")
-archivo_excel = st.file_uploader(
-    "Seleccione un archivo Excel",
-    type=["xlsx"],
-    help="Se procesarán únicamente DETALLE_GENERAL y DETALLE_FUNCIONALES."
-)
 
 if archivo_excel is not None:
     st.info(f"📄 Archivo seleccionado: {archivo_excel.name}")
