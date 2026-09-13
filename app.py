@@ -337,20 +337,17 @@ def ventana_gestion(id_solicitud):
             st.warning("⚠️ Debe ingresar una observación.")
             return
 
-        # La fecha y hora seleccionadas representan la hora local de Colombia.
-        # Se guarda como fecha/hora local (sin conversión UTC) para evitar
-        # desplazamientos de hora al insertar en PostgreSQL.
-        fecha = datetime.combine(
-            fecha_seleccionada,
-            hora_seleccionada
+        # Guardar EXACTAMENTE la fecha y hora seleccionadas por el usuario.
+        # No se aplica ninguna conversión de zona horaria.
+        fecha_db = (
+            f"{fecha_seleccionada:%Y-%m-%d} "
+            f"{hora_seleccionada:%H:%M:%S}"
         )
 
         db = Database()
 
         try:
             db.conectar()
-
-            db.execute("SET TIME ZONE 'America/Bogota'")
 
             db.execute(
                 """
@@ -373,14 +370,19 @@ def ventana_gestion(id_solicitud):
                 """
                 INSERT INTO public."Gestiones"
                 ("FECHA_GESTION","ID_SOLICITUD","OBSERVACION")
-                VALUES (CAST(%s AS timestamp), %s, %s)
+                VALUES (CAST(%s AS timestamp without time zone), %s, %s)
+                RETURNING "FECHA_GESTION"
                 """,
-                (fecha.strftime("%Y-%m-%d %H:%M:%S"), id_solicitud, observacion)
+                (fecha_db, id_solicitud, observacion)
             )
+
+            fecha_guardada = db.fetchone()[0]
 
             db.commit()
 
-            st.success("✅ Gestión guardada correctamente.")
+            st.success(
+                f"✅ Gestión guardada correctamente: {fecha_guardada:%Y-%m-%d %H:%M:%S}"
+            )
             st.rerun()
 
         except Exception as e:
@@ -628,28 +630,26 @@ def ventana_actualizar(id_solicitud):
 
     if actualizar:
 
-        fecha_db = pd.Timestamp.combine(
-            fecha_cierre_fecha,
-            fecha_cierre_hora
-        ).to_pydatetime()
+        # Guardar EXACTAMENTE la fecha y hora seleccionadas por el usuario.
+        # No se aplica ninguna conversión de zona horaria.
+        fecha_cierre_db = (
+            f"{fecha_cierre_fecha:%Y-%m-%d} "
+            f"{fecha_cierre_hora:%H:%M:%S}"
+        )
 
         db = Database()
 
         try:
             db.conectar()
 
-            # Guardar exactamente la fecha y hora digitadas por el usuario.
-            # Se envía como texto YYYY-MM-DD HH:MM:SS y PostgreSQL la convierte
-            # explícitamente a timestamp, evitando conversiones de zona horaria.
-            fecha_cierre_db = fecha_db.strftime("%Y-%m-%d %H:%M:%S")
-
             db.execute(
                 """
                 UPDATE public."Solicitudes"
-                SET "FECHA_CIERRE" = CAST(%s AS timestamp),
+                SET "FECHA_CIERRE" = CAST(%s AS timestamp without time zone),
                     "STATUS" = %s,
                     "CODIGO_CIERRE" = %s
                 WHERE "ID_SOLICITUD" = %s
+                RETURNING "FECHA_CIERRE"
                 """,
                 (
                     fecha_cierre_db,
@@ -659,10 +659,12 @@ def ventana_actualizar(id_solicitud):
                 )
             )
 
+            fecha_cierre_guardada = db.fetchone()[0]
+
             db.commit()
 
             st.success(
-                "✅ La solicitud fue actualizada correctamente."
+                f"✅ Solicitud actualizada. Fecha/hora guardada: {fecha_cierre_guardada:%Y-%m-%d %H:%M:%S}"
             )
             st.rerun()
 
