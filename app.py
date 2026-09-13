@@ -337,11 +337,13 @@ def ventana_gestion(id_solicitud):
             st.warning("⚠️ Debe ingresar una observación.")
             return
 
-        # La hora digitada se interpreta como hora de Colombia.
+        # La fecha y hora seleccionadas representan la hora local de Colombia.
+        # Se guarda como fecha/hora local (sin conversión UTC) para evitar
+        # desplazamientos de hora al insertar en PostgreSQL.
         fecha = datetime.combine(
             fecha_seleccionada,
             hora_seleccionada
-        ).replace(tzinfo=ZoneInfo("America/Bogota"))
+        )
 
         db = Database()
 
@@ -371,9 +373,9 @@ def ventana_gestion(id_solicitud):
                 """
                 INSERT INTO public."Gestiones"
                 ("FECHA_GESTION","ID_SOLICITUD","OBSERVACION")
-                VALUES (%s,%s,%s)
+                VALUES (CAST(%s AS timestamp), %s, %s)
                 """,
-                (fecha, id_solicitud, observacion)
+                (fecha.strftime("%Y-%m-%d %H:%M:%S"), id_solicitud, observacion)
             )
 
             db.commit()
