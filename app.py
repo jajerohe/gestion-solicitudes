@@ -15,7 +15,7 @@ st.set_page_config(
 # ============================================================
 # ENCABEZADO SIGPI
 # ============================================================
-st.image("Logo_SIGPI.png", width=900)
+st.image("Logo_SIGPI.png", width=500)
 
 def obtener_solicitudes():
     db = Database()
