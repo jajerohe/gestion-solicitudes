@@ -693,7 +693,7 @@ def ventana_actualizar(id_solicitud):
             db.commit()
 
             st.success(
-                f"✅ Solicitud actualizada. Fecha/hora guardada: {fecha_cierre_guardada:%Y-%m-%d %H:%M:%S}"
+                f"✅ Gestión guardada correctamente"
             )
             st.caption(
                 f"PostgreSQL devolvió exactamente: {fecha_cierre_guardada:%Y-%m-%d %H:%M:%S}"
