@@ -313,8 +313,10 @@ def ventana_gestion(id_solicitud):
         with c_hora:
             hora_gestion_texto = st.text_input(
                 "Hora de gestión 🕐",
-                value=ahora.strftime("%H:%M:%S"),
+                value="",
                 max_chars=8,
+                key=f"hora_gestion_{id_solicitud}",
+                placeholder="HH:MM:SS",
                 help="Digite la hora exactamente en formato HH:MM:SS. Ejemplo: 15:30:42"
             )
 
@@ -349,6 +351,9 @@ def ventana_gestion(id_solicitud):
             return
 
         fecha_db = f"{fecha_seleccionada:%Y-%m-%d} {hora_gestion}"
+
+        # Diagnóstico visible: este es EXACTAMENTE el valor enviado a PostgreSQL.
+        st.info(f"🕐 Valor que se enviará a BD: **{fecha_db}**")
 
         db = Database()
 
@@ -388,6 +393,9 @@ def ventana_gestion(id_solicitud):
 
             st.success(
                 f"✅ Gestión guardada correctamente: {fecha_guardada:%Y-%m-%d %H:%M:%S}"
+            )
+            st.caption(
+                f"PostgreSQL devolvió exactamente: {fecha_guardada:%Y-%m-%d %H:%M:%S}"
             )
             st.rerun()
 
@@ -624,8 +632,14 @@ def ventana_actualizar(id_solicitud):
         with c_hora:
             hora_cierre_texto = st.text_input(
                 "Hora de cierre 🕐",
-                value=fecha_inicial.strftime("%H:%M:%S"),
+                value=(
+                    fecha_inicial.strftime("%H:%M:%S")
+                    if pd.notna(fecha_actual)
+                    else ""
+                ),
                 max_chars=8,
+                key=f"hora_cierre_{id_solicitud}",
+                placeholder="HH:MM:SS",
                 help="Digite la hora exactamente en formato HH:MM:SS. Ejemplo: 18:12:34"
             )
 
@@ -648,6 +662,9 @@ def ventana_actualizar(id_solicitud):
             return
 
         fecha_cierre_db = f"{fecha_cierre_fecha:%Y-%m-%d} {hora_cierre}"
+
+        # Diagnóstico visible: este es EXACTAMENTE el valor enviado a PostgreSQL.
+        st.info(f"🕐 Valor de cierre que se enviará a BD: **{fecha_cierre_db}**")
 
         db = Database()
 
@@ -677,6 +694,9 @@ def ventana_actualizar(id_solicitud):
 
             st.success(
                 f"✅ Solicitud actualizada. Fecha/hora guardada: {fecha_cierre_guardada:%Y-%m-%d %H:%M:%S}"
+            )
+            st.caption(
+                f"PostgreSQL devolvió exactamente: {fecha_cierre_guardada:%Y-%m-%d %H:%M:%S}"
             )
             st.rerun()
 
