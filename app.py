@@ -352,8 +352,7 @@ def ventana_gestion(id_solicitud):
 
         fecha_db = f"{fecha_seleccionada:%Y-%m-%d} {hora_gestion}"
 
-        # Diagnóstico visible: este es EXACTAMENTE el valor enviado a PostgreSQL.
-        st.info(f"🕐 Valor que se enviará a BD: **{fecha_db}**")
+        
 
         db = Database()
 
