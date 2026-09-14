@@ -122,6 +122,10 @@ def cargar_excel(archivo, db):
 
     excel = pd.ExcelFile(archivo)
 
+    # Inserta solicitudes nuevas.
+    # Si el ID ya existe, el UPDATE solo se ejecuta cuando la solicitud
+    # sigue abierta (FECHA_CIERRE y CODIGO_CIERRE son NULL).
+    # Las solicitudes cerradas quedan protegidas.
     sql = '''
         INSERT INTO public."Solicitudes"
         ("ORIGEN","TIPO","ID_SOLICITUD","TI_PRESTADOR","GRUPO_ASIGNACION",
@@ -131,7 +135,28 @@ def cargar_excel(archivo, db):
          "PRODUCT_OWNER","DIFDIAS")
         VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,
                 %s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
-        ON CONFLICT ("ID_SOLICITUD") DO NOTHING
+        ON CONFLICT ("ID_SOLICITUD") DO UPDATE
+        SET
+            "ORIGEN" = EXCLUDED."ORIGEN",
+            "TIPO" = EXCLUDED."TIPO",
+            "TI_PRESTADOR" = EXCLUDED."TI_PRESTADOR",
+            "GRUPO_ASIGNACION" = EXCLUDED."GRUPO_ASIGNACION",
+            "ASIGNADO_A" = EXCLUDED."ASIGNADO_A",
+            "NOMBRE_ASIGNATARIO" = EXCLUDED."NOMBRE_ASIGNATARIO",
+            "CORREO_ASIGNATARIO" = EXCLUDED."CORREO_ASIGNATARIO",
+            "CATEGORIA" = EXCLUDED."CATEGORIA",
+            "CONTACTO" = EXCLUDED."CONTACTO",
+            "DESTINATARIO" = EXCLUDED."DESTINATARIO",
+            "STATUS" = EXCLUDED."STATUS",
+            "FECHA_APERTURA" = EXCLUDED."FECHA_APERTURA",
+            "RANGTIEMPO" = EXCLUDED."RANGTIEMPO",
+            "TITULO" = EXCLUDED."TITULO",
+            "DESCRIPCION" = EXCLUDED."DESCRIPCION",
+            "SUBSERVICIO_AFECTADO" = EXCLUDED."SUBSERVICIO_AFECTADO",
+            "PRODUCT_OWNER" = EXCLUDED."PRODUCT_OWNER",
+            "DIFDIAS" = EXCLUDED."DIFDIAS"
+        WHERE public."Solicitudes"."FECHA_CIERRE" IS NULL
+          AND public."Solicitudes"."CODIGO_CIERRE" IS NULL
         RETURNING "ID_SOLICITUD"
     '''
 
@@ -147,13 +172,18 @@ def cargar_excel(archivo, db):
         for _, fila in df.iterrows():
             try:
                 db.execute(sql, preparar_registro(fila, hoja))
+
+                # INSERT nuevo o UPDATE de una solicitud abierta.
                 if db.fetchone():
                     if hoja == "DETALLE_GENERAL":
                         resultado["generales"] += 1
                     else:
                         resultado["funcionales"] += 1
                 else:
+                    # Si RETURNING no devuelve fila, significa que el ID ya
+                    # existía y estaba cerrado, por lo que no se modifica.
                     resultado["duplicados"] += 1
+
             except Exception:
                 resultado["errores"] += 1
                 raise
