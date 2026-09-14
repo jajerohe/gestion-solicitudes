@@ -798,22 +798,6 @@ div[data-testid="stButton"] > button {
     border-radius: 50% !important;
 }
 
-/* Botón "Actualizar Solicitud": forma de la figura 2.
-   Streamlit lo renderiza como stFormSubmitButton, por eso se
-   fuerza directamente sobre ese contenedor. */
-div[data-testid="stFormSubmitButton"] > button,
-div[data-testid="stFormSubmitButton"] button,
-div[data-testid="stForm"] div[data-testid="stFormSubmitButton"] > button {
-    min-height: 26px !important;
-    height: 26px !important;
-    width: auto !important;
-    min-width: 0 !important;
-    padding: 0 10px !important;
-    margin: 0 !important;
-    font-size: 11px !important;
-    line-height: 1 !important;
-    border-radius: 6px !important;
-}
 
 /* Separador del encabezado */
 hr {
