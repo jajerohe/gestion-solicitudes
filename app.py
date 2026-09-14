@@ -798,6 +798,19 @@ div[data-testid="stButton"] > button {
     border-radius: 50% !important;
 }
 
+/* Botón "Actualizar Solicitud": mantener la forma rectangular
+   redondeada de la figura 2, sin afectar los botones +. */
+div[data-testid="stForm"] div[data-testid="stButton"] > button {
+    min-height: 26px !important;
+    height: 26px !important;
+    width: auto !important;
+    padding: 0 10px !important;
+    margin: 0 !important;
+    font-size: 11px !important;
+    line-height: 1 !important;
+    border-radius: 6px !important;
+}
+
 /* Separador del encabezado */
 hr {
     margin: 2px 0 !important;
