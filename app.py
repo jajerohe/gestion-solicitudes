@@ -602,15 +602,26 @@ def ventana_actualizar(id_solicitud):
         else pd.Timestamp.now()
     )
 
-    # Código de cierre se deja fuera del formulario para que al cambiarlo
-    # Streamlit vuelva a ejecutar la pantalla y habilite/deshabilite
-    # dinámicamente la fecha y hora de cierre.
-    nuevo_codigo = st.selectbox(
-        "Código de cierre",
-        codigo_opciones,
-        index=i_codigo,
-        key=f"codigo_cierre_{id_solicitud}"
-    )
+    # Código de cierre permanece en su posición original, junto a Estado.
+    # Al cambiarlo, Streamlit vuelve a ejecutar la pantalla y habilita o
+    # deshabilita dinámicamente la fecha y hora de cierre.
+    a, b = st.columns(2)
+
+    with a:
+        nuevo_status = st.selectbox(
+            "Estado",
+            status_opciones,
+            index=i_status,
+            key=f"status_actualizar_{id_solicitud}"
+        )
+
+    with b:
+        nuevo_codigo = st.selectbox(
+            "Código de cierre",
+            codigo_opciones,
+            index=i_codigo,
+            key=f"codigo_cierre_{id_solicitud}"
+        )
 
     codigo_seleccionado = bool(nuevo_codigo)
 
@@ -633,23 +644,6 @@ def ventana_actualizar(id_solicitud):
     )
 
     with st.form(f"form_actualizar_popup_{id_solicitud}"):
-
-        a, b = st.columns(2)
-
-        with a:
-            nuevo_status = st.selectbox(
-                "Estado",
-                status_opciones,
-                index=i_status
-            )
-
-        with b:
-            # El código de cierre se muestra arriba del formulario para
-            # permitir la habilitación inmediata de fecha y hora.
-            st.markdown(
-                f"**Código de cierre seleccionado:** "
-                f"{nuevo_codigo if nuevo_codigo else 'Ninguno'}"
-            )
 
         c_fecha, c_hora = st.columns(2)
 
