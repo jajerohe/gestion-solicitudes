@@ -802,15 +802,13 @@ div[data-testid="stButton"] > button {
 /* Botones de los formularios: misma forma que "Guardar Gestión" */
 div[data-testid="stFormSubmitButton"] > button,
 div[data-testid="stFormSubmitButton"] button {
-    min-height: 26px !important;
-    height: 26px !important;
-    width: auto !important;
-    min-width: 0 !important;
-    padding: 0 10px !important;
+    min-height: 24px !important;
+    height: 24px !important;
+    padding: 0 4px !important;
     margin: 0 !important;
     font-size: 11px !important;
     line-height: 1 !important;
-    border-radius: 6px !important;
+    border-radius: 50% !important;
 }
 
 
