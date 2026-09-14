@@ -602,9 +602,11 @@ def ventana_actualizar(id_solicitud):
         else pd.Timestamp.now()
     )
 
-    # Código de cierre permanece en su posición original, junto a Estado.
-    # Al cambiarlo, Streamlit vuelve a ejecutar la pantalla y habilita o
-    # deshabilita dinámicamente la fecha y hora de cierre.
+    # ========================================================
+    # ESTADO + CÓDIGO DE CIERRE
+    # Se mantienen en la misma posición y distribución original:
+    # Estado a la izquierda y Código de cierre a la derecha.
+    # ========================================================
     a, b = st.columns(2)
 
     with a:
@@ -625,24 +627,26 @@ def ventana_actualizar(id_solicitud):
 
     codigo_seleccionado = bool(nuevo_codigo)
 
-    # Si no hay código de cierre seleccionado, limpiar la fecha y la hora.
+    # Cuando no hay código de cierre, limpiar fecha y hora.
     if not codigo_seleccionado:
-        st.session_state[f"fecha_cierre_{id_solicitud}"] = None
-        st.session_state[f"hora_cierre_{id_solicitud}"] = ""
+        fecha_default = None
+        hora_default = ""
+    else:
+        fecha_default = (
+            fecha_inicial.date()
+            if pd.notna(fecha_actual)
+            else pd.Timestamp.now().date()
+        )
+        hora_default = (
+            fecha_inicial.strftime("%H:%M:%S")
+            if pd.notna(fecha_actual)
+            else ""
+        )
 
-    # Si existe un código de cierre, conservar la fecha/hora actual si existe.
-    fecha_default = (
-        fecha_inicial.date()
-        if codigo_seleccionado and pd.notna(fecha_actual)
-        else None
-    )
-
-    hora_default = (
-        fecha_inicial.strftime("%H:%M:%S")
-        if codigo_seleccionado and pd.notna(fecha_actual)
-        else ""
-    )
-
+    # ========================================================
+    # FECHA + HORA DE CIERRE
+    # Se mantienen en la segunda fila, como en la imagen.
+    # ========================================================
     with st.form(f"form_actualizar_popup_{id_solicitud}"):
 
         c_fecha, c_hora = st.columns(2)
@@ -674,20 +678,19 @@ def ventana_actualizar(id_solicitud):
 
     if actualizar:
 
-        # Sin código de cierre: dejar fecha y hora de cierre en NULL/vacías.
+        # Si no hay código de cierre, se limpia fecha y hora.
         if not nuevo_codigo:
             fecha_cierre_db = None
-            hora_cierre = None
         else:
-            # Con código de cierre: la fecha y la hora son obligatorias.
+            # Si hay código de cierre, fecha y hora son obligatorias.
             hora_cierre_texto = hora_cierre_texto.strip()
-
-            if not hora_cierre_texto:
-                st.error("❌ Debe ingresar la hora de cierre.")
-                return
 
             if fecha_cierre_fecha is None:
                 st.error("❌ Debe seleccionar la fecha de cierre.")
+                return
+
+            if not hora_cierre_texto:
+                st.error("❌ Debe ingresar la hora de cierre.")
                 return
 
             try:
@@ -695,10 +698,15 @@ def ventana_actualizar(id_solicitud):
                     hora_cierre_texto, "%H:%M:%S"
                 ).strftime("%H:%M:%S")
             except ValueError:
-                st.error("❌ La hora de cierre debe tener el formato HH:MM:SS. Ejemplo: 18:12:34")
+                st.error(
+                    "❌ La hora de cierre debe tener el formato HH:MM:SS. "
+                    "Ejemplo: 18:12:34"
+                )
                 return
 
-            fecha_cierre_db = f"{fecha_cierre_fecha:%Y-%m-%d} {hora_cierre}"
+            fecha_cierre_db = (
+                f"{fecha_cierre_fecha:%Y-%m-%d} {hora_cierre}"
+            )
 
         db = Database()
 
