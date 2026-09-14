@@ -798,9 +798,10 @@ div[data-testid="stButton"] > button {
     border-radius: 50% !important;
 }
 
-/* Botones de los formularios: misma forma que "Guardar Gestión" */
-div[data-testid="stFormSubmitButton"] > button,
-div[data-testid="stFormSubmitButton"] button {
+/* Botones de los formularios: misma forma que "Guardar Gestión".
+   Se aplica directamente al botón dentro del st.form para evitar que
+   el CSS general de los botones "+" le coloque border-radius: 50%. */
+div[data-testid="stForm"] button {
     min-height: 26px !important;
     height: 26px !important;
     width: auto !important;
@@ -810,6 +811,7 @@ div[data-testid="stFormSubmitButton"] button {
     font-size: 11px !important;
     line-height: 1 !important;
     border-radius: 6px !important;
+    box-sizing: border-box !important;
 }
 
 
