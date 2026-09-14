@@ -733,11 +733,16 @@ def ventana_actualizar(id_solicitud):
 
             db.commit()
 
+            if fecha_cierre_guardada is not None:
+                fecha_hora_mensaje = fecha_cierre_guardada.strftime("%Y-%m-%d %H:%M:%S")
+            else:
+                fecha_hora_mensaje = "Sin fecha/hora de cierre"
+
             st.success(
-                f"✅ Solicitud actualizada. Fecha/hora guardada: {fecha_cierre_guardada:%Y-%m-%d %H:%M:%S}"
+                f"✅ Solicitud actualizada. Fecha/hora guardada: {fecha_hora_mensaje}"
             )
             st.caption(
-                f"PostgreSQL devolvió exactamente: {fecha_cierre_guardada:%Y-%m-%d %H:%M:%S}"
+                f"PostgreSQL devolvió exactamente: {fecha_hora_mensaje}"
             )
             st.rerun()
 
@@ -811,7 +816,6 @@ div[data-testid="stFormSubmitButton"] button {
     font-size: 11px !important;
     line-height: 1 !important;
     border-radius: 6px !important;
-    box-sizing: border-box !important;
 }
 
 
