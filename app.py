@@ -602,6 +602,36 @@ def ventana_actualizar(id_solicitud):
         else pd.Timestamp.now()
     )
 
+    # Código de cierre se deja fuera del formulario para que al cambiarlo
+    # Streamlit vuelva a ejecutar la pantalla y habilite/deshabilite
+    # dinámicamente la fecha y hora de cierre.
+    nuevo_codigo = st.selectbox(
+        "Código de cierre",
+        codigo_opciones,
+        index=i_codigo,
+        key=f"codigo_cierre_{id_solicitud}"
+    )
+
+    codigo_seleccionado = bool(nuevo_codigo)
+
+    # Si no hay código de cierre seleccionado, limpiar la fecha y la hora.
+    if not codigo_seleccionado:
+        st.session_state[f"fecha_cierre_{id_solicitud}"] = None
+        st.session_state[f"hora_cierre_{id_solicitud}"] = ""
+
+    # Si existe un código de cierre, conservar la fecha/hora actual si existe.
+    fecha_default = (
+        fecha_inicial.date()
+        if codigo_seleccionado and pd.notna(fecha_actual)
+        else None
+    )
+
+    hora_default = (
+        fecha_inicial.strftime("%H:%M:%S")
+        if codigo_seleccionado and pd.notna(fecha_actual)
+        else ""
+    )
+
     with st.form(f"form_actualizar_popup_{id_solicitud}"):
 
         a, b = st.columns(2)
@@ -614,10 +644,11 @@ def ventana_actualizar(id_solicitud):
             )
 
         with b:
-            nuevo_codigo = st.selectbox(
-                "Código de cierre",
-                codigo_opciones,
-                index=i_codigo
+            # El código de cierre se muestra arriba del formulario para
+            # permitir la habilitación inmediata de fecha y hora.
+            st.markdown(
+                f"**Código de cierre seleccionado:** "
+                f"{nuevo_codigo if nuevo_codigo else 'Ninguno'}"
             )
 
         c_fecha, c_hora = st.columns(2)
@@ -625,22 +656,21 @@ def ventana_actualizar(id_solicitud):
         with c_fecha:
             fecha_cierre_fecha = st.date_input(
                 "Fecha de cierre",
-                value=fecha_inicial.date(),
-                format="DD/MM/YYYY"
+                value=fecha_default,
+                format="DD/MM/YYYY",
+                disabled=not codigo_seleccionado,
+                key=f"fecha_cierre_{id_solicitud}"
             )
 
         with c_hora:
             hora_cierre_texto = st.text_input(
                 "Hora de cierre 🕐",
-                value=(
-                    fecha_inicial.strftime("%H:%M:%S")
-                    if pd.notna(fecha_actual)
-                    else ""
-                ),
+                value=hora_default,
                 max_chars=8,
                 key=f"hora_cierre_{id_solicitud}",
                 placeholder="HH:MM:SS",
-                help="Digite la hora exactamente en formato HH:MM:SS. Ejemplo: 18:12:34"
+                help="Digite la hora exactamente en formato HH:MM:SS. Ejemplo: 18:12:34",
+                disabled=not codigo_seleccionado
             )
 
         actualizar = st.form_submit_button(
@@ -650,18 +680,31 @@ def ventana_actualizar(id_solicitud):
 
     if actualizar:
 
-        # Guardar EXACTAMENTE la fecha y hora digitadas por el usuario.
-        hora_cierre_texto = hora_cierre_texto.strip()
+        # Sin código de cierre: dejar fecha y hora de cierre en NULL/vacías.
+        if not nuevo_codigo:
+            fecha_cierre_db = None
+            hora_cierre = None
+        else:
+            # Con código de cierre: la fecha y la hora son obligatorias.
+            hora_cierre_texto = hora_cierre_texto.strip()
 
-        try:
-            hora_cierre = datetime.strptime(
-                hora_cierre_texto, "%H:%M:%S"
-            ).strftime("%H:%M:%S")
-        except ValueError:
-            st.error("❌ La hora de cierre debe tener el formato HH:MM:SS. Ejemplo: 18:12:34")
-            return
+            if not hora_cierre_texto:
+                st.error("❌ Debe ingresar la hora de cierre.")
+                return
 
-        fecha_cierre_db = f"{fecha_cierre_fecha:%Y-%m-%d} {hora_cierre}"
+            if fecha_cierre_fecha is None:
+                st.error("❌ Debe seleccionar la fecha de cierre.")
+                return
+
+            try:
+                hora_cierre = datetime.strptime(
+                    hora_cierre_texto, "%H:%M:%S"
+                ).strftime("%H:%M:%S")
+            except ValueError:
+                st.error("❌ La hora de cierre debe tener el formato HH:MM:SS. Ejemplo: 18:12:34")
+                return
+
+            fecha_cierre_db = f"{fecha_cierre_fecha:%Y-%m-%d} {hora_cierre}"
 
         db = Database()
 
