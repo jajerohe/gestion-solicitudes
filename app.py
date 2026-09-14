@@ -604,8 +604,10 @@ def ventana_actualizar(id_solicitud):
 
     # ========================================================
     # BLOQUE DE ACTUALIZACIÓN
-    # Todo queda dentro del mismo contenedor visual.
-    # Estado y Código de cierre permanecen en la primera fila.
+    # Todos los campos quedan dentro del mismo contenedor visual.
+    # Código de cierre queda fuera del st.form para que su cambio
+    # habilite/deshabilite dinámicamente fecha y hora.
+    # El botón permanece dentro del st.form.
     # ========================================================
     with st.container(border=True):
 
@@ -629,9 +631,10 @@ def ventana_actualizar(id_solicitud):
 
         codigo_seleccionado = bool(nuevo_codigo)
 
-        # Cuando no hay código de cierre, los campos se muestran vacíos
-        # y deshabilitados. Al seleccionar un código, se habilitan.
-        if codigo_seleccionado:
+        if not codigo_seleccionado:
+            fecha_default = None
+            hora_default = ""
+        else:
             fecha_default = (
                 fecha_inicial.date()
                 if pd.notna(fecha_actual)
@@ -642,36 +645,35 @@ def ventana_actualizar(id_solicitud):
                 if pd.notna(fecha_actual)
                 else ""
             )
-        else:
-            fecha_default = None
-            hora_default = ""
 
-        c_fecha, c_hora = st.columns(2)
+        with st.form(f"form_actualizar_popup_{id_solicitud}"):
 
-        with c_fecha:
-            fecha_cierre_fecha = st.date_input(
-                "Fecha de cierre",
-                value=fecha_default,
-                format="DD/MM/YYYY",
-                disabled=not codigo_seleccionado,
-                key=f"fecha_cierre_{id_solicitud}"
+            c_fecha, c_hora = st.columns(2)
+
+            with c_fecha:
+                fecha_cierre_fecha = st.date_input(
+                    "Fecha de cierre",
+                    value=fecha_default,
+                    format="DD/MM/YYYY",
+                    disabled=not codigo_seleccionado,
+                    key=f"fecha_cierre_{id_solicitud}"
+                )
+
+            with c_hora:
+                hora_cierre_texto = st.text_input(
+                    "Hora de cierre 🕐",
+                    value=hora_default,
+                    max_chars=8,
+                    placeholder="HH:MM:SS",
+                    help="Digite la hora exactamente en formato HH:MM:SS. Ejemplo: 18:12:34",
+                    disabled=not codigo_seleccionado,
+                    key=f"hora_cierre_{id_solicitud}"
+                )
+
+            actualizar = st.form_submit_button(
+                "🔄 Actualizar Solicitud",
+                use_container_width=False
             )
-
-        with c_hora:
-            hora_cierre_texto = st.text_input(
-                "Hora de cierre 🕐",
-                value=hora_default,
-                max_chars=8,
-                placeholder="HH:MM:SS",
-                help="Digite la hora exactamente en formato HH:MM:SS. Ejemplo: 18:12:34",
-                disabled=not codigo_seleccionado,
-                key=f"hora_cierre_{id_solicitud}"
-            )
-
-        actualizar = st.form_submit_button(
-            "🔄 Actualizar Solicitud",
-            use_container_width=False
-        )
 
     if actualizar:
 
@@ -796,6 +798,21 @@ div[data-testid="stButton"] > button {
     line-height: 1 !important;
     border-radius: 50% !important;
 }
+
+/* Botones de los formularios: misma forma que "Guardar Gestión" */
+div[data-testid="stFormSubmitButton"] > button,
+div[data-testid="stFormSubmitButton"] button {
+    min-height: 26px !important;
+    height: 26px !important;
+    width: auto !important;
+    min-width: 0 !important;
+    padding: 0 10px !important;
+    margin: 0 !important;
+    font-size: 11px !important;
+    line-height: 1 !important;
+    border-radius: 6px !important;
+}
+
 
 /* Separador del encabezado */
 hr {
