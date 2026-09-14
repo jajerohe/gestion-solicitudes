@@ -668,9 +668,8 @@ def ventana_actualizar(id_solicitud):
                 key=f"hora_cierre_{id_solicitud}"
             )
 
-        actualizar = st.button(
+        actualizar = st.form_submit_button(
             "🔄 Actualizar Solicitud",
-            key=f"btn_actualizar_{id_solicitud}",
             use_container_width=False
         )
 
