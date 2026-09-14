@@ -603,51 +603,48 @@ def ventana_actualizar(id_solicitud):
     )
 
     # ========================================================
-    # ESTADO + CÓDIGO DE CIERRE
-    # Se mantienen en la misma posición y distribución original:
-    # Estado a la izquierda y Código de cierre a la derecha.
+    # BLOQUE DE ACTUALIZACIÓN
+    # Todo queda dentro del mismo contenedor visual.
+    # Estado y Código de cierre permanecen en la primera fila.
     # ========================================================
-    a, b = st.columns(2)
+    with st.container(border=True):
 
-    with a:
-        nuevo_status = st.selectbox(
-            "Estado",
-            status_opciones,
-            index=i_status,
-            key=f"status_actualizar_{id_solicitud}"
-        )
+        a, b = st.columns(2)
 
-    with b:
-        nuevo_codigo = st.selectbox(
-            "Código de cierre",
-            codigo_opciones,
-            index=i_codigo,
-            key=f"codigo_cierre_{id_solicitud}"
-        )
+        with a:
+            nuevo_status = st.selectbox(
+                "Estado",
+                status_opciones,
+                index=i_status,
+                key=f"status_actualizar_{id_solicitud}"
+            )
 
-    codigo_seleccionado = bool(nuevo_codigo)
+        with b:
+            nuevo_codigo = st.selectbox(
+                "Código de cierre",
+                codigo_opciones,
+                index=i_codigo,
+                key=f"codigo_cierre_{id_solicitud}"
+            )
 
-    # Cuando no hay código de cierre, limpiar fecha y hora.
-    if not codigo_seleccionado:
-        fecha_default = None
-        hora_default = ""
-    else:
-        fecha_default = (
-            fecha_inicial.date()
-            if pd.notna(fecha_actual)
-            else pd.Timestamp.now().date()
-        )
-        hora_default = (
-            fecha_inicial.strftime("%H:%M:%S")
-            if pd.notna(fecha_actual)
-            else ""
-        )
+        codigo_seleccionado = bool(nuevo_codigo)
 
-    # ========================================================
-    # FECHA + HORA DE CIERRE
-    # Se mantienen en la segunda fila, como en la imagen.
-    # ========================================================
-    with st.form(f"form_actualizar_popup_{id_solicitud}"):
+        # Cuando no hay código de cierre, los campos se muestran vacíos
+        # y deshabilitados. Al seleccionar un código, se habilitan.
+        if codigo_seleccionado:
+            fecha_default = (
+                fecha_inicial.date()
+                if pd.notna(fecha_actual)
+                else pd.Timestamp.now().date()
+            )
+            hora_default = (
+                fecha_inicial.strftime("%H:%M:%S")
+                if pd.notna(fecha_actual)
+                else ""
+            )
+        else:
+            fecha_default = None
+            hora_default = ""
 
         c_fecha, c_hora = st.columns(2)
 
@@ -665,14 +662,15 @@ def ventana_actualizar(id_solicitud):
                 "Hora de cierre 🕐",
                 value=hora_default,
                 max_chars=8,
-                key=f"hora_cierre_{id_solicitud}",
                 placeholder="HH:MM:SS",
                 help="Digite la hora exactamente en formato HH:MM:SS. Ejemplo: 18:12:34",
-                disabled=not codigo_seleccionado
+                disabled=not codigo_seleccionado,
+                key=f"hora_cierre_{id_solicitud}"
             )
 
-        actualizar = st.form_submit_button(
+        actualizar = st.button(
             "🔄 Actualizar Solicitud",
+            key=f"btn_actualizar_{id_solicitud}",
             use_container_width=False
         )
 
