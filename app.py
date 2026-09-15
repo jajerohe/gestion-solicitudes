@@ -837,18 +837,18 @@ anchos_tabla = [
 headers = st.columns(anchos_tabla)
 
 titulos_tabla = [
-    "ID_SOLICITUD",
-    "TITULO",
-    "FECHA_APERTURA",
-    "SUBSERVICIO_AFECTADO",
-    "PRODUCT_OWNER",
-    "STATUS",
-    "ASIGNADO_A",
-    "NOMBRE_ASIGNATARIO",
-    "CORREO_ASIGNATARIO",
-    "GESTIÓN",
-    "VER GESTIÓN",
-    "ACTUALIZAR"
+    "Solicitud",
+    "Titulo",
+    "Apertura",
+    "Servicio",
+    "Product Owner",
+    "Estado",
+    "Registro",
+    "Nombre Asignatario",
+    "Correo Asignatario",
+    "Gestionar",
+    "Ver Gestión",
+    "Actualizar"
 ]
 
 for col, title in zip(headers, titulos_tabla):
