@@ -899,7 +899,7 @@ for _, fila in df_filtrado.iterrows():
     # Botón para adicionar gestión
     with cols[9]:
         if st.button(
-            "➕",
+            "✏️",
             key=f"gestion_{sid}",
             help=f"Adicionar gestión a {sid}",
             use_container_width=True
@@ -909,7 +909,7 @@ for _, fila in df_filtrado.iterrows():
     # Botón para ver las gestiones registradas
     with cols[10]:
         if st.button(
-            "👁️",
+            "🔍",
             key=f"ver_gestion_{sid}",
             help=f"Ver gestión de {sid}",
             use_container_width=True
@@ -919,7 +919,7 @@ for _, fila in df_filtrado.iterrows():
     # Botón para actualizar solicitud
     with cols[11]:
         if st.button(
-            "➕",
+            "📝",
             key=f"actualizar_{sid}",
             help=f"Actualizar solicitud {sid}",
             use_container_width=True
