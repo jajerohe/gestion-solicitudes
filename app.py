@@ -819,22 +819,6 @@ div[data-testid="stFormSubmitButton"] button {
 }
 
 
-/* Resaltado suave de toda la fila al pasar el mouse */
-div[data-testid="stHorizontalBlock"]:has(.fila-hover-marker):hover {
-    background-color: #f3f4f6 !important;
-    border-radius: 5px !important;
-    transition: background-color 0.15s ease-in-out;
-}
-
-/* Marcador invisible utilizado para identificar cada fila */
-.fila-hover-marker {
-    display: block !important;
-    width: 0 !important;
-    height: 0 !important;
-    padding: 0 !important;
-    margin: 0 !important;
-}
-
 /* Separador del encabezado */
 hr {
     margin: 2px 0 !important;
@@ -881,15 +865,6 @@ for _, fila in df_filtrado.iterrows():
     sid = fila["ID_SOLICITUD"]
 
     cols = st.columns(anchos_tabla)
-
-    # Marcador invisible: permite que el CSS identifique este
-    # stHorizontalBlock como una fila de datos y aplique el hover
-    # a toda la fila.
-    with cols[0]:
-        st.markdown(
-            '<span class="fila-hover-marker"></span>',
-            unsafe_allow_html=True
-        )
 
     valores = [
         fila["ID_SOLICITUD"],
