@@ -5,12 +5,169 @@ from zoneinfo import ZoneInfo
 
 from database import Database
 from excel_web import analizar_excel, cargar_excel
+from auth import iniciar_sesion, cerrar_sesion
 
 st.set_page_config(
     page_title="SIGPI",
     page_icon="📋",
     layout="wide"
 )
+
+# ============================================================
+# AUTENTICACIÓN Y USUARIO ACTUAL
+# ============================================================
+
+def obtener_usuario_por_auth_id(auth_user_id):
+    """Obtiene el usuario de SIGPI asociado al usuario autenticado en Supabase."""
+    db = Database()
+    try:
+        db.conectar()
+        db.execute(
+            """
+            SELECT "USUARIO", "PERFIL", "NOMBRE"
+            FROM public."USUARIOS"
+            WHERE "AUTH_USER_ID" = %s
+            LIMIT 1
+            """,
+            (auth_user_id,)
+        )
+        registro = db.fetchone()
+
+        if not registro:
+            return None
+
+        return {
+            "USUARIO": registro[0],
+            "PERFIL": registro[1],
+            "NOMBRE": registro[2],
+        }
+    finally:
+        db.cerrar()
+
+
+def mostrar_login():
+    """Muestra el formulario de inicio de sesión y detiene la ejecución."""
+    st.markdown(
+        """
+        <style>
+        .login-container {
+            max-width: 520px;
+            margin: 80px auto 0 auto;
+            padding: 30px;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+
+    col1, col2, col3 = st.columns([1, 2, 1])
+
+    with col2:
+        st.image("Logo_SIGPI.png", width=420)
+        st.markdown(
+            "<h2 style='text-align:center; color:#24344D;'>"
+            "🔐 Inicio de sesión"
+            "</h2>",
+            unsafe_allow_html=True
+        )
+        st.caption(
+            "Ingrese sus credenciales para acceder al Sistema Integrado "
+            "de Gestión de Peticiones e Incidentes."
+        )
+
+        with st.form("form_login"):
+            email = st.text_input(
+                "Correo electrónico",
+                placeholder="usuario@dominio.com"
+            )
+            password = st.text_input(
+                "Contraseña",
+                type="password"
+            )
+            ingresar = st.form_submit_button(
+                "🔐 Ingresar",
+                type="primary",
+                use_container_width=True
+            )
+
+        if ingresar:
+            email = email.strip()
+
+            if not email or not password:
+                st.warning("⚠️ Debe ingresar el correo electrónico y la contraseña.")
+                return
+
+            try:
+                with st.spinner("Validando credenciales..."):
+                    respuesta = iniciar_sesion(email, password)
+
+                if not respuesta or not getattr(respuesta, "user", None):
+                    st.error("❌ No fue posible iniciar sesión.")
+                    return
+
+                auth_user_id = str(respuesta.user.id)
+                usuario = obtener_usuario_por_auth_id(auth_user_id)
+
+                if not usuario:
+                    cerrar_sesion()
+                    st.error(
+                        "❌ El usuario está autenticado en Supabase, "
+                        "pero no está registrado en SIGPI."
+                    )
+                    return
+
+                st.session_state["auth_user_id"] = auth_user_id
+                st.session_state["usuario_actual"] = usuario["USUARIO"]
+                st.session_state["perfil_actual"] = usuario["PERFIL"]
+                st.session_state["nombre_actual"] = usuario["NOMBRE"]
+                st.session_state["email_actual"] = email
+
+                st.rerun()
+
+            except Exception as e:
+                st.error(
+                    "❌ Correo o contraseña incorrectos, o no fue posible autenticar."
+                )
+                st.exception(e)
+
+
+# ============================================================
+# CONTROL DE ACCESO
+# ============================================================
+
+if "usuario_actual" not in st.session_state:
+    mostrar_login()
+    st.stop()
+
+usuario_actual = st.session_state["usuario_actual"]
+perfil_actual = st.session_state.get("perfil_actual", "")
+nombre_actual = st.session_state.get("nombre_actual", "")
+
+# ============================================================
+# ENCABEZADO DE SESIÓN
+# ============================================================
+
+with st.sidebar:
+    st.markdown("### 👤 Sesión")
+    st.write(f"**Usuario:** {usuario_actual}")
+
+    if nombre_actual:
+        st.write(f"**Nombre:** {nombre_actual}")
+
+    if perfil_actual:
+        st.write(f"**Perfil:** {perfil_actual}")
+
+    if st.button("🚪 Cerrar sesión", use_container_width=True):
+        cerrar_sesion()
+        for clave in [
+            "auth_user_id",
+            "usuario_actual",
+            "perfil_actual",
+            "nombre_actual",
+            "email_actual",
+        ]:
+            st.session_state.pop(clave, None)
+        st.rerun()
 
 # ============================================================
 # ENCABEZADO: LOGO A LA IZQUIERDA + CARGA DE EXCEL A LA DERECHA
@@ -36,21 +193,43 @@ with col_carga:
         help="Se procesarán únicamente DETALLE_GENERAL y DETALLE_FUNCIONALES."
     )
 
-def obtener_solicitudes():
+
+st.caption(
+    f"👤 Sesión activa: {nombre_actual or usuario_actual} · Usuario: {usuario_actual}"
+)
+
+
+def obtener_solicitudes(usuario):
     db = Database()
     try:
         db.conectar()
         sql = '''
-            SELECT "ID_SOLICITUD","TITULO","FECHA_APERTURA",
-                   "SUBSERVICIO_AFECTADO","PRODUCT_OWNER","STATUS",
-                   "ASIGNADO_A","NOMBRE_ASIGNATARIO","CORREO_ASIGNATARIO",
-                   "FECHA_CIERRE","CODIGO_CIERRE"
-            FROM public."SOLICITUDES"
-            WHERE "CODIGO_CIERRE" IS NULL
-              AND "FECHA_CIERRE" IS NULL
-            ORDER BY "FECHA_APERTURA" ASC
+            SELECT
+                s."ID_SOLICITUD",
+                s."TITULO",
+                s."FECHA_APERTURA",
+                s."SUBSERVICIO_AFECTADO",
+                s."PRODUCT_OWNER",
+                s."STATUS",
+                s."ASIGNADO_A",
+                s."NOMBRE_ASIGNATARIO",
+                s."CORREO_ASIGNATARIO",
+                s."FECHA_CIERRE",
+                s."CODIGO_CIERRE"
+            FROM public."SOLICITUDES" s
+            INNER JOIN public."PODS" p
+                ON UPPER(TRIM(s."PRODUCT_OWNER"))
+                 = UPPER(TRIM(p."NOMBRE"))
+            INNER JOIN public."USUARIOS_PODS" up
+                ON up."ID_POD" = p."ID_POD"
+            INNER JOIN public."USUARIOS" u
+                ON u."USUARIO" = up."USUARIO"
+            WHERE u."USUARIO" = %s
+              AND s."CODIGO_CIERRE" IS NULL
+              AND s."FECHA_CIERRE" IS NULL
+            ORDER BY s."FECHA_APERTURA" ASC
         '''
-        db.execute(sql)
+        db.execute(sql, (usuario,))
         registros = db.fetchall()
         columnas = [
             "ID_SOLICITUD","TITULO","FECHA_APERTURA","SUBSERVICIO_AFECTADO",
@@ -227,7 +406,7 @@ if archivo_excel is not None:
             db.cerrar()
 
 try:
-    df = obtener_solicitudes()
+    df = obtener_solicitudes(usuario_actual)
 except Exception as e:
     st.error("❌ No fue posible consultar las solicitudes.")
     st.exception(e)
