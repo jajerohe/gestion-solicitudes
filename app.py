@@ -46,33 +46,206 @@ def obtener_usuario_por_auth_id(auth_user_id):
 
 
 def mostrar_login():
-    """Muestra el formulario de inicio de sesión y detiene la ejecución."""
+    """Muestra el inicio de sesión con un diseño de dos paneles."""
+
     st.markdown(
         """
         <style>
-        .login-container {
-            max-width: 520px;
-            margin: 80px auto 0 auto;
-            padding: 30px;
+        /* ======================================================
+           PANTALLA DE LOGIN
+           ====================================================== */
+        [data-testid="stSidebar"] { display: none !important; }
+        header[data-testid="stHeader"] { display: none !important; }
+        .block-container {
+            padding: 0 !important;
+            max-width: 100% !important;
+        }
+
+        /* Primer panel: identidad SIGPI */
+        div[data-testid="stHorizontalBlock"] > div:first-child {
+            background:
+                radial-gradient(circle at 20% 18%, rgba(196,229,47,.16), transparent 28%),
+                linear-gradient(145deg, #0b2824 0%, #153e34 52%, #0d2b27 100%);
+            min-height: 100vh;
+            padding: 72px 7% !important;
+            position: relative;
+            overflow: hidden;
+            box-sizing: border-box;
+        }
+
+        div[data-testid="stHorizontalBlock"] > div:first-child:after {
+            content: "";
+            position: absolute;
+            width: 560px;
+            height: 560px;
+            right: -290px;
+            bottom: -280px;
+            border-radius: 50%;
+            border: 1px solid rgba(201,229,46,.20);
+            box-shadow:
+                0 0 0 45px rgba(201,229,46,.035),
+                0 0 0 95px rgba(201,229,46,.025);
+            pointer-events: none;
+        }
+
+        /* Segundo panel: formulario */
+        div[data-testid="stHorizontalBlock"] > div:nth-child(2) {
+            background: #f7f8fa;
+            min-height: 100vh;
+            padding: 35px 6% !important;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-sizing: border-box;
+        }
+
+        .sigpi-login-brand {
+            max-width: 620px;
+            margin: 55px auto 0 auto;
+            position: relative;
+            z-index: 2;
+        }
+        .sigpi-login-brand h1 {
+            font-size: 34px;
+            line-height: 1.12;
+            margin: 24px 0 12px 0;
+            color: #ffffff;
+            font-weight: 800;
+        }
+        .sigpi-login-brand h1 span { color: #c9e52e; }
+        .sigpi-login-brand p {
+            font-size: 16px;
+            line-height: 1.55;
+            color: rgba(255,255,255,.82);
+            max-width: 560px;
+            margin-bottom: 28px;
+        }
+        .sigpi-feature {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 15px 0;
+            color: #f4f7f4;
+            font-size: 14px;
+        }
+        .sigpi-dot {
+            width: 9px;
+            height: 9px;
+            min-width: 9px;
+            border-radius: 50%;
+            background: #c9e52e;
+            box-shadow: 0 0 10px rgba(201,229,46,.45);
+        }
+
+        .sigpi-login-title {
+            text-align: center;
+            color: #24344d;
+            font-size: 30px;
+            font-weight: 800;
+            margin: 0 0 7px 0;
+        }
+        .sigpi-login-subtitle {
+            text-align: center;
+            color: #7b8490;
+            font-size: 14px;
+            margin: 0 0 24px 0;
+        }
+        .sigpi-login-footer {
+            text-align: center;
+            color: #9aa1aa;
+            font-size: 11px;
+            line-height: 1.5;
+            margin-top: 18px;
+        }
+
+        /* Tarjeta del formulario */
+        div[data-testid="stForm"] {
+            background: #ffffff;
+            border: 1px solid #e5e9ee;
+            border-radius: 14px;
+            padding: 32px 34px 26px 34px;
+            box-shadow: 0 16px 42px rgba(28,42,58,.11);
+            max-width: 430px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        div[data-testid="stForm"] label {
+            color: #4c5663 !important;
+            font-weight: 600 !important;
+        }
+        div[data-testid="stForm"] input {
+            border-radius: 8px !important;
+            border: 1px solid #d9dee5 !important;
+        }
+        div[data-testid="stForm"] input:focus {
+            border-color: #789c38 !important;
+            box-shadow: 0 0 0 1px #789c38 !important;
+        }
+        div[data-testid="stFormSubmitButton"] button {
+            background: #789c38 !important;
+            border: none !important;
+            color: white !important;
+            border-radius: 7px !important;
+            min-height: 44px !important;
+            font-weight: 700 !important;
+            font-size: 15px !important;
+        }
+        div[data-testid="stFormSubmitButton"] button:hover {
+            background: #66872f !important;
+        }
+
+        @media (max-width: 900px) {
+            div[data-testid="stHorizontalBlock"] > div:first-child,
+            div[data-testid="stHorizontalBlock"] > div:nth-child(2) {
+                min-height: auto;
+            }
+            div[data-testid="stHorizontalBlock"] > div:first-child {
+                padding: 40px 8% !important;
+            }
+            div[data-testid="stHorizontalBlock"] > div:nth-child(2) {
+                padding: 35px 8% 55px 8% !important;
+            }
+            .sigpi-login-brand {
+                margin-top: 20px;
+            }
+            .sigpi-login-brand h1 {
+                font-size: 28px;
+            }
         }
         </style>
         """,
         unsafe_allow_html=True
     )
 
-    col1, col2, col3 = st.columns([1, 2, 1])
+    left, right = st.columns([1.15, 0.85], gap="small")
 
-    with col2:
-        st.image("Logo_SIGPI.png", width=420)
+    with left:
+        st.image("Logo_SIGPI.png", width=430)
         st.markdown(
-            "<h2 style='text-align:center; color:#24344D;'>"
-            "🔐 Inicio de sesión"
-            "</h2>",
+            """
+            <div class="sigpi-login-brand">
+                <h1>Gestión inteligente de <span>peticiones e incidentes</span></h1>
+                <p>
+                    Seguimiento centralizado de solicitudes y gestiones,
+                    con información trazable y segura.
+                </p>
+                <div class="sigpi-feature"><span class="sigpi-dot"></span>Seguimiento centralizado de solicitudes</div>
+                <div class="sigpi-feature"><span class="sigpi-dot"></span>Control y trazabilidad de la información</div>
+                <div class="sigpi-feature"><span class="sigpi-dot"></span>Acceso seguro según usuario y POD asignado</div>
+            </div>
+            """,
             unsafe_allow_html=True
         )
-        st.caption(
-            "Ingrese sus credenciales para acceder al Sistema Integrado "
-            "de Gestión de Peticiones e Incidentes."
+
+    with right:
+        st.markdown(
+            """
+            <div style="max-width:430px;width:100%;margin:0 auto;">
+                <div class="sigpi-login-title">Bienvenido de nuevo</div>
+                <div class="sigpi-login-subtitle">Ingresa con tus credenciales para continuar</div>
+            </div>
+            """,
+            unsafe_allow_html=True
         )
 
         with st.form("form_login"):
@@ -82,13 +255,24 @@ def mostrar_login():
             )
             password = st.text_input(
                 "Contraseña",
-                type="password"
+                type="password",
+                placeholder="Ingrese su contraseña"
             )
             ingresar = st.form_submit_button(
-                "🔐 Ingresar",
+                "Ingresar",
                 type="primary",
                 use_container_width=True
             )
+
+        st.markdown(
+            """
+            <div class="sigpi-login-footer">
+                SIGPI · Sistema Integrado de Gestión de Peticiones e Incidentes<br>
+                Acceso protegido mediante autenticación segura.
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
 
         if ingresar:
             email = email.strip()
@@ -124,11 +308,10 @@ def mostrar_login():
 
                 st.rerun()
 
-            except Exception as e:
+            except Exception:
                 st.error(
                     "❌ Correo o contraseña incorrectos, o no fue posible autenticar."
                 )
-                st.exception(e)
 
 
 # ============================================================
