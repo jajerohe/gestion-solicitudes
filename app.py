@@ -14,6 +14,28 @@ st.set_page_config(
 )
 
 # ============================================================
+# OCULTAR BARRA SUPERIOR NATIVA DE STREAMLIT
+# ============================================================
+st.markdown("""
+<style>
+/* Barra superior de Streamlit (Share, estrella, editar, menú) */
+header[data-testid="stHeader"],
+[data-testid="stToolbar"],
+[data-testid="stDecoration"] {
+    display: none !important;
+    visibility: hidden !important;
+    height: 0 !important;
+    min-height: 0 !important;
+}
+
+/* Eliminar el espacio que deja la barra superior */
+.block-container {
+    padding-top: 0.5rem !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
+# ============================================================
 # AUTENTICACIÓN Y USUARIO ACTUAL
 # ============================================================
 
