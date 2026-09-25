@@ -45,7 +45,7 @@ def obtener_solicitudes():
                    "SUBSERVICIO_AFECTADO","PRODUCT_OWNER","STATUS",
                    "ASIGNADO_A","NOMBRE_ASIGNATARIO","CORREO_ASIGNATARIO",
                    "FECHA_CIERRE","CODIGO_CIERRE"
-            FROM public."Solicitudes"
+            FROM public."SOLICITUDES"
             WHERE "CODIGO_CIERRE" IS NULL
               AND "FECHA_CIERRE" IS NULL
             ORDER BY "FECHA_APERTURA" ASC
@@ -170,7 +170,7 @@ if archivo_excel is not None:
 
                 # Garantizar que todos los TITULO queden almacenados en MAYÚSCULAS.
                 db.execute("""
-                    UPDATE public."Solicitudes"
+                    UPDATE public."SOLICITUDES"
                     SET "TITULO" = UPPER("TITULO")
                     WHERE "TITULO" IS NOT NULL
                 """)
@@ -714,7 +714,7 @@ def ventana_actualizar(id_solicitud):
 
             db.execute(
                 """
-                UPDATE public."Solicitudes"
+                UPDATE public."SOLICITUDES"
                 SET "FECHA_CIERRE" = CAST(%s AS timestamp without time zone),
                     "STATUS" = %s,
                     "CODIGO_CIERRE" = %s
