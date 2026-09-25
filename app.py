@@ -327,59 +327,95 @@ perfil_actual = st.session_state.get("perfil_actual", "")
 nombre_actual = st.session_state.get("nombre_actual", "")
 
 # ============================================================
-# ENCABEZADO DE SESIÓN
+# ESTILO GENERAL DE LA APLICACIÓN
+# Diseño interno inspirado en Supervisor Operativo:
+# sidebar claro, verde institucional, tarjetas y flujo por pasos.
 # ============================================================
+st.markdown("""
+<style>
+:root{--dark:#0b5b4d;--dark2:#0f735f;--lime:#b7d51f;--bg:#f4f5f7;--border:#e0e5e5;--text:#17342f;--muted:#78827f}
+html,body,[data-testid="stAppViewContainer"]{background:var(--bg)!important}
+[data-testid="stHeader"]{background:#fff!important;border-bottom:1px solid var(--border)}
+[data-testid="stAppViewContainer"]>.main{background:var(--bg)!important}
+.block-container{padding:1.05rem 1.45rem 2rem!important;max-width:100%!important}
+section[data-testid="stSidebar"]{background:#fff!important;border-right:1px solid #e1e5e8!important;min-width:235px!important;width:235px!important}
+section[data-testid="stSidebar"]>div{padding:.8rem .8rem 1rem!important}
+.sigpi-side-brand{padding:4px 7px 13px;border-bottom:1px solid #edf0f1;margin-bottom:10px}
+.sigpi-side-title{color:var(--dark);font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;margin-top:3px}
+.sigpi-menu-section{color:#7b8582;font-size:10px;font-weight:800;text-transform:uppercase;margin:16px 7px 6px;letter-spacing:.6px}
+.sigpi-menu-item{display:flex;align-items:center;gap:9px;padding:9px;margin:3px 0;border-radius:7px;color:#40514d;font-size:12px;font-weight:600}
+.sigpi-menu-item.active{color:#fff;background:linear-gradient(90deg,#0b5b4d,#147b66);box-shadow:0 3px 10px rgba(11,91,77,.16)}
+.sigpi-menu-icon{width:21px;height:21px;display:inline-flex;align-items:center;justify-content:center;border-radius:5px;background:#edf6f2;font-size:12px}
+.sigpi-menu-item.active .sigpi-menu-icon{background:rgba(255,255,255,.18)}
+.sigpi-session-card{margin-top:14px;padding:10px;border:1px solid #e3e8e6;border-radius:9px;background:#f8faf9;font-size:10px;color:#5f6d69;line-height:1.65}
+.sigpi-session-card strong{color:var(--dark)}
+.sigpi-topbar{background:#fff;border:1px solid var(--border);border-radius:8px;min-height:64px;padding:9px 16px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 7px rgba(20,45,40,.04);margin-bottom:12px}
+.sigpi-top-title{color:var(--dark);font-size:18px;font-weight:800}.sigpi-top-subtitle{color:#7b8582;font-size:10px;margin-top:2px}.sigpi-user-pill{background:#f1f6f4;border:1px solid #dce9e4;color:#28564d;border-radius:20px;padding:7px 12px;font-size:10px;font-weight:700}
+.sigpi-step-card{background:#fff;border:1px solid var(--border);border-radius:8px;min-height:66px;padding:10px 13px;box-shadow:0 2px 7px rgba(20,45,40,.035)}
+.sigpi-step-card.active{border-color:#9ec91f;box-shadow:inset 0 3px 0 var(--lime)}
+.sigpi-step-number{color:#7b8582;font-size:9px;font-weight:800;text-transform:uppercase}.sigpi-step-name{color:#1b4038;font-size:12px;font-weight:800;margin-top:3px}.sigpi-step-state{color:#73807c;font-size:9px;margin-top:3px}
+.sigpi-section-title{color:#16473e;font-size:15px;font-weight:800;margin:2px 0 5px}.sigpi-section-caption{color:#7b8582;font-size:10px;margin-bottom:8px}
+div[data-testid="stVerticalBlockBorderWrapper"]{border-color:var(--border)!important;border-radius:8px!important;background:#fff!important}
+div[data-testid="stFileUploader"]{background:#f7f9f8!important;border:1px dashed #b9c9c4!important;border-radius:7px!important}
+div[data-testid="stTextInput"] input,div[data-testid="stTextArea"] textarea,div[data-baseweb="select"]>div{border-radius:6px!important}
+button[kind="primary"]{background:var(--dark)!important;border-color:var(--dark)!important;border-radius:6px!important;font-weight:700!important}button[kind="primary"]:hover{background:#08493e!important;border-color:#08493e!important}
+[data-testid="stMetric"]{background:#fff;border:1px solid var(--border);border-radius:7px;padding:9px 11px}[data-testid="stMetricLabel"]{color:#70807a!important}[data-testid="stMetricValue"]{color:var(--dark)!important}
+div[data-testid="stAlert"]{border-radius:7px!important}
+.tabla-header{color:#356158!important;font-size:10px!important;font-weight:800!important;text-transform:uppercase;letter-spacing:.2px;line-height:1.1!important;white-space:nowrap;padding:0!important}.tabla-cell{color:#40514d!important;font-size:10px!important;line-height:1.15!important;min-height:24px!important;padding:5px 3px!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-bottom:1px solid #edf0ef}div[data-testid="column"]{padding-top:0!important;padding-bottom:0!important}
+div[data-testid="stButton"]>button{border-radius:6px!important;min-height:27px!important;height:27px!important;padding:0 7px!important;font-size:11px!important;color:var(--dark)!important;border:1px solid #cfe0db!important;background:#f5f9f7!important}div[data-testid="stButton"]>button:hover{background:#e8f2ee!important;border-color:#9fc3b8!important}
+div[data-testid="stFormSubmitButton"]>button{border-radius:6px!important;min-height:32px!important;font-weight:700!important}hr{margin:8px 0!important;border-color:#e3e8e6!important}
+@media(max-width:900px){.block-container{padding:.7rem .75rem 1.5rem!important}section[data-testid="stSidebar"]{min-width:200px!important;width:200px!important}.sigpi-topbar{min-height:58px}}
+</style>
+""",unsafe_allow_html=True)
 
+# ============================================================
+# ENCABEZADO DE SESIÓN / SIDEBAR
+# ============================================================
 with st.sidebar:
-    st.markdown("### 👤 Sesión")
-    st.write(f"**Usuario:** {usuario_actual}")
-
-    if nombre_actual:
-        st.write(f"**Nombre:** {nombre_actual}")
-
-    if perfil_actual:
-        st.write(f"**Perfil:** {perfil_actual}")
-
-    if st.button("🚪 Cerrar sesión", use_container_width=True):
+    st.markdown('<div class="sigpi-side-brand">',unsafe_allow_html=True)
+    st.image("Logo_SIGPI.png",width=175)
+    st.markdown('<div class="sigpi-side-title">Sistema Integrado de Gestión</div></div>',unsafe_allow_html=True)
+    st.markdown("""
+    <div class="sigpi-menu-section">Operaciones</div>
+    <div class="sigpi-menu-item active"><span class="sigpi-menu-icon">▣</span>Solicitudes</div>
+    <div class="sigpi-menu-item"><span class="sigpi-menu-icon">↻</span>Gestiones</div>
+    <div class="sigpi-menu-item"><span class="sigpi-menu-icon">⇧</span>Carga de información</div>
+    <div class="sigpi-menu-section">Sesión</div>
+    """,unsafe_allow_html=True)
+    st.markdown(f"""
+    <div class="sigpi-session-card"><strong>{nombre_actual or usuario_actual}</strong><br>
+    Usuario: {usuario_actual}<br>Perfil: {perfil_actual or 'Sin perfil'}</div>
+    """,unsafe_allow_html=True)
+    if st.button("🚪 Cerrar sesión",use_container_width=True):
         cerrar_sesion()
-        for clave in [
-            "auth_user_id",
-            "usuario_actual",
-            "perfil_actual",
-            "nombre_actual",
-            "email_actual",
-        ]:
-            st.session_state.pop(clave, None)
+        for clave in ["auth_user_id","usuario_actual","perfil_actual","nombre_actual","email_actual"]:
+            st.session_state.pop(clave,None)
         st.rerun()
 
 # ============================================================
-# ENCABEZADO: LOGO A LA IZQUIERDA + CARGA DE EXCEL A LA DERECHA
+# ENCABEZADO INTERNO
 # ============================================================
-col_logo, col_carga = st.columns([1.25, 1], gap="large")
+st.markdown(f"""
+<div class="sigpi-topbar"><div><div class="sigpi-top-title">Gestión de Solicitudes</div>
+<div class="sigpi-top-subtitle">Sistema Integrado de Gestión de Peticiones e Incidentes · SIGPI</div></div>
+<div class="sigpi-user-pill">👤 {nombre_actual or usuario_actual} · {perfil_actual or 'Usuario'}</div></div>
+""",unsafe_allow_html=True)
 
-with col_logo:
-    st.image("Logo_SIGPI.png", width=500)
+step1,step2,step3=st.columns([1,1,1],gap="small")
+with step1: st.markdown('<div class="sigpi-step-card active"><div class="sigpi-step-number">PASO 1</div><div class="sigpi-step-name">Consultar solicitudes</div><div class="sigpi-step-state">Gestión y seguimiento</div></div>',unsafe_allow_html=True)
+with step2: st.markdown('<div class="sigpi-step-card"><div class="sigpi-step-number">PASO 2</div><div class="sigpi-step-name">Registrar gestión</div><div class="sigpi-step-state">Observaciones y trazabilidad</div></div>',unsafe_allow_html=True)
+with step3: st.markdown('<div class="sigpi-step-card"><div class="sigpi-step-number">PASO 3</div><div class="sigpi-step-name">Actualizar solicitud</div><div class="sigpi-step-state">Cierre y estado</div></div>',unsafe_allow_html=True)
+st.markdown('<div style="height:8px"></div>',unsafe_allow_html=True)
 
-with col_carga:
-    st.markdown(
-        '<div style="margin-top: 28px;">'
-        '<h3 style="margin-bottom: 8px; color: #24344D;">'
-        '📤 Cargar solicitudes desde Excel'
-        '</h3>'
-        '</div>',
-        unsafe_allow_html=True
-    )
+# ============================================================
+# CARGA DE EXCEL
+# ============================================================
+with st.container(border=True):
+    st.markdown('<div class="sigpi-section-title">📥 Cargar solicitudes desde Excel</div>',unsafe_allow_html=True)
+    st.markdown('<div class="sigpi-section-caption">Seleccione el archivo de origen para analizar y cargar las solicitudes en SIGPI.</div>',unsafe_allow_html=True)
+    archivo_excel=st.file_uploader("Seleccione un archivo Excel",type=["xlsx"],help="Se procesarán únicamente DETALLE_GENERAL y DETALLE_FUNCIONALES.")
 
-    archivo_excel = st.file_uploader(
-        "Seleccione un archivo Excel",
-        type=["xlsx"],
-        help="Se procesarán únicamente DETALLE_GENERAL y DETALLE_FUNCIONALES."
-    )
-
-
-st.caption(
-    f"👤 Sesión activa: {nombre_actual or usuario_actual} · Usuario: {usuario_actual}"
-)
+st.caption(f"👤 Sesión activa: {nombre_actual or usuario_actual} · Usuario: {usuario_actual}")
 
 
 def obtener_solicitudes(usuario):
