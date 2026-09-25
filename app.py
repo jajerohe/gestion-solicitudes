@@ -348,6 +348,10 @@ usuario_actual = st.session_state["usuario_actual"]
 perfil_actual = st.session_state.get("perfil_actual", "")
 nombre_actual = st.session_state.get("nombre_actual", "")
 
+# Perfil Administrador: acceso completo a carga y solicitudes.
+# Perfil Operador: acceso restringido a las solicitudes de sus POD asignados.
+es_administrador = str(perfil_actual or "").strip().lower() == "administrador"
+
 # ============================================================
 # ESTILO GENERAL DE LA APLICACIÓN
 # Diseño interno inspirado en Supervisor Operativo:
@@ -401,9 +405,14 @@ with st.sidebar:
     <div class="sigpi-menu-section">Operaciones</div>
     <div class="sigpi-menu-item active"><span class="sigpi-menu-icon">▣</span>Solicitudes</div>
     <div class="sigpi-menu-item"><span class="sigpi-menu-icon">↻</span>Gestiones</div>
-    <div class="sigpi-menu-item"><span class="sigpi-menu-icon">⇧</span>Carga de información</div>
-    <div class="sigpi-menu-section">Sesión</div>
     """,unsafe_allow_html=True)
+
+    if es_administrador:
+        st.markdown("""
+        <div class="sigpi-menu-item"><span class="sigpi-menu-icon">⇧</span>Carga de información</div>
+        """,unsafe_allow_html=True)
+
+    st.markdown('<div class="sigpi-menu-section">Sesión</div>',unsafe_allow_html=True)
     st.markdown(f"""
     <div class="sigpi-session-card"><strong>{nombre_actual or usuario_actual}</strong><br>
     Usuario: {usuario_actual}<br>Perfil: {perfil_actual or 'Sin perfil'}</div>
@@ -430,47 +439,82 @@ with step3: st.markdown('<div class="sigpi-step-card"><div class="sigpi-step-num
 st.markdown('<div style="height:8px"></div>',unsafe_allow_html=True)
 
 # ============================================================
-# CARGA DE EXCEL
+# CARGA DE EXCEL — SOLO ADMINISTRADOR
 # ============================================================
-with st.container(border=True):
-    st.markdown('<div class="sigpi-section-title">📥 Cargar solicitudes desde Excel</div>',unsafe_allow_html=True)
-    st.markdown('<div class="sigpi-section-caption">Seleccione el archivo de origen para analizar y cargar las solicitudes en SIGPI.</div>',unsafe_allow_html=True)
-    archivo_excel=st.file_uploader("Seleccione un archivo Excel",type=["xlsx"],help="Se procesarán únicamente DETALLE_GENERAL y DETALLE_FUNCIONALES.")
+archivo_excel = None
+
+if es_administrador:
+    with st.container(border=True):
+        st.markdown('<div class="sigpi-section-title">📥 Cargar solicitudes desde Excel</div>',unsafe_allow_html=True)
+        st.markdown('<div class="sigpi-section-caption">Seleccione el archivo de origen para analizar y cargar las solicitudes en SIGPI.</div>',unsafe_allow_html=True)
+        archivo_excel=st.file_uploader(
+            "Seleccione un archivo Excel",
+            type=["xlsx"],
+            help="Se procesarán únicamente DETALLE_GENERAL y DETALLE_FUNCIONALES."
+        )
 
 st.caption(f"👤 Sesión activa: {nombre_actual or usuario_actual} · Usuario: {usuario_actual}")
 
 
-def obtener_solicitudes(usuario):
+def obtener_solicitudes(usuario, administrador=False):
+    """
+    Consulta las solicitudes según el perfil:
+      - Administrador: todas las solicitudes pendientes, sin restricción de POD.
+      - Operador: únicamente solicitudes de los POD asociados al usuario.
+    """
     db = Database()
     try:
         db.conectar()
-        sql = '''
-            SELECT
-                s."ID_SOLICITUD",
-                s."TITULO",
-                s."FECHA_APERTURA",
-                s."SUBSERVICIO_AFECTADO",
-                s."PRODUCT_OWNER",
-                s."STATUS",
-                s."ASIGNADO_A",
-                s."NOMBRE_ASIGNATARIO",
-                s."CORREO_ASIGNATARIO",
-                s."FECHA_CIERRE",
-                s."CODIGO_CIERRE"
-            FROM public."SOLICITUDES" s
-            INNER JOIN public."PODS" p
-                ON UPPER(TRIM(s."PRODUCT_OWNER"))
-                 = UPPER(TRIM(p."NOMBRE"))
-            INNER JOIN public."USUARIOS_PODS" up
-                ON up."ID_POD" = p."ID_POD"
-            INNER JOIN public."USUARIOS" u
-                ON u."USUARIO" = up."USUARIO"
-            WHERE u."USUARIO" = %s
-              AND s."CODIGO_CIERRE" IS NULL
-              AND s."FECHA_CIERRE" IS NULL
-            ORDER BY s."FECHA_APERTURA" ASC
-        '''
-        db.execute(sql, (usuario,))
+
+        if administrador:
+            sql = '''
+                SELECT
+                    s."ID_SOLICITUD",
+                    s."TITULO",
+                    s."FECHA_APERTURA",
+                    s."SUBSERVICIO_AFECTADO",
+                    s."PRODUCT_OWNER",
+                    s."STATUS",
+                    s."ASIGNADO_A",
+                    s."NOMBRE_ASIGNATARIO",
+                    s."CORREO_ASIGNATARIO",
+                    s."FECHA_CIERRE",
+                    s."CODIGO_CIERRE"
+                FROM public."SOLICITUDES" s
+                WHERE s."CODIGO_CIERRE" IS NULL
+                  AND s."FECHA_CIERRE" IS NULL
+                ORDER BY s."FECHA_APERTURA" ASC
+            '''
+            db.execute(sql)
+        else:
+            sql = '''
+                SELECT DISTINCT
+                    s."ID_SOLICITUD",
+                    s."TITULO",
+                    s."FECHA_APERTURA",
+                    s."SUBSERVICIO_AFECTADO",
+                    s."PRODUCT_OWNER",
+                    s."STATUS",
+                    s."ASIGNADO_A",
+                    s."NOMBRE_ASIGNATARIO",
+                    s."CORREO_ASIGNATARIO",
+                    s."FECHA_CIERRE",
+                    s."CODIGO_CIERRE"
+                FROM public."SOLICITUDES" s
+                INNER JOIN public."PODS" p
+                    ON UPPER(TRIM(s."PRODUCT_OWNER"))
+                     = UPPER(TRIM(p."NOMBRE"))
+                INNER JOIN public."USUARIOS_PODS" up
+                    ON up."ID_POD" = p."ID_POD"
+                INNER JOIN public."USUARIOS" u
+                    ON u."USUARIO" = up."USUARIO"
+                WHERE u."USUARIO" = %s
+                  AND s."CODIGO_CIERRE" IS NULL
+                  AND s."FECHA_CIERRE" IS NULL
+                ORDER BY s."FECHA_APERTURA" ASC
+            '''
+            db.execute(sql, (usuario,))
+
         registros = db.fetchall()
         columnas = [
             "ID_SOLICITUD","TITULO","FECHA_APERTURA","SUBSERVICIO_AFECTADO",
@@ -537,7 +581,7 @@ def guardar_auditoria(
         fecha_actual
     ))
 
-if archivo_excel is not None:
+if es_administrador and archivo_excel is not None:
     st.info(f"📄 Archivo seleccionado: {archivo_excel.name}")
     c1, c2 = st.columns(2)
 
@@ -647,7 +691,7 @@ if archivo_excel is not None:
             db.cerrar()
 
 try:
-    df = obtener_solicitudes(usuario_actual)
+    df = obtener_solicitudes(usuario_actual, es_administrador)
 except Exception as e:
     st.error("❌ No fue posible consultar las solicitudes.")
     st.exception(e)
