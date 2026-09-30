@@ -155,7 +155,7 @@ def cargar_excel(archivo, db):
             "SUBSERVICIO_AFECTADO" = EXCLUDED."SUBSERVICIO_AFECTADO",
             "PRODUCT_OWNER" = EXCLUDED."PRODUCT_OWNER",
             "DIFDIAS" = EXCLUDED."DIFDIAS"
-        WHERE public."Solicitudes"."FECHA_CIERRE" IS NULL
+        WHERE public."SOLICITUDES"."FECHA_CIERRE" IS NULL
           AND public."Solicitudes"."CODIGO_CIERRE" IS NULL
         RETURNING "ID_SOLICITUD"
     '''
