@@ -558,16 +558,16 @@ def guardar_auditoria(
     fecha_actual = pd.Timestamp.now().to_pydatetime()
 
     db.execute("""
-        INSERT INTO public."Auditoria"
+        INSERT INTO public."AUDITORIA"
         (
-            "NOMBREARCHIVO",
-            "FECHACARGUE",
-            "REGISTROSGENERALES",
-            "REGISTROSFUNCIONALES",
+            "NOMBRE_ARCHIVO",
+            "FECHA_CARGUE",
+            "REGISTROS_GENERALES",
+            "REGISTROS_FUNCIONALES",
             "ESTADO",
             "OBSERVACIONES",
-            "USUARIOCARGA",
-            "FECHAREGISTRO"
+            "USUARIO_CARGA",
+            "FECHA_REGISTRO"
         )
         VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
     """, (
