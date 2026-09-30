@@ -127,7 +127,7 @@ def cargar_excel(archivo, db):
     # sigue abierta (FECHA_CIERRE y CODIGO_CIERRE son NULL).
     # Las solicitudes cerradas quedan protegidas.
     sql = '''
-        INSERT INTO public."Solicitudes"
+        INSERT INTO public."SOLICITUDES"
         ("ORIGEN","TIPO","ID_SOLICITUD","TI_PRESTADOR","GRUPO_ASIGNACION",
          "ASIGNADO_A","NOMBRE_ASIGNATARIO","CORREO_ASIGNATARIO","CATEGORIA",
          "CURRENT_PHASE","CONTACTO","DESTINATARIO","STATUS","FECHA_APERTURA",
