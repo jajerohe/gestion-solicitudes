@@ -824,7 +824,7 @@ def ventana_gestion(id_solicitud):
             db.execute(
                 """
                 SELECT 1
-                FROM public."Gestiones"
+                FROM public."GESTIONES"
                 WHERE "ID_SOLICITUD" = %s
                   AND "OBSERVACION" = %s
                 LIMIT 1
@@ -840,7 +840,7 @@ def ventana_gestion(id_solicitud):
 
             db.execute(
                 """
-                INSERT INTO public."Gestiones"
+                INSERT INTO public."GESTIONES"
                 ("FECHA_GESTION","ID_SOLICITUD","OBSERVACION")
                 VALUES (CAST(%s AS timestamp without time zone), %s, %s)
                 RETURNING "FECHA_GESTION"
