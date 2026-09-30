@@ -156,7 +156,7 @@ def cargar_excel(archivo, db):
             "PRODUCT_OWNER" = EXCLUDED."PRODUCT_OWNER",
             "DIFDIAS" = EXCLUDED."DIFDIAS"
         WHERE public."SOLICITUDES"."FECHA_CIERRE" IS NULL
-          AND public."Solicitudes"."CODIGO_CIERRE" IS NULL
+          AND public."SOLICITUDES"."CODIGO_CIERRE" IS NULL
         RETURNING "ID_SOLICITUD"
     '''
 
