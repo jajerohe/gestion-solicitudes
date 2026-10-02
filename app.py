@@ -8,7 +8,7 @@ from excel_web import analizar_excel, cargar_excel
 from auth import iniciar_sesion, cerrar_sesion
 
 st.set_page_config(
-    page_title="SIGPI",
+    page_title="PODEX",
     page_icon="📋",
     layout="wide"
 )
@@ -40,7 +40,7 @@ header[data-testid="stHeader"],
 # ============================================================
 
 def obtener_usuario_por_auth_id(auth_user_id):
-    """Obtiene el usuario de SIGPI asociado al usuario autenticado en Supabase."""
+    """Obtiene el usuario de PODEX asociado al usuario autenticado en Supabase."""
     db = Database()
     try:
         db.conectar()
@@ -74,7 +74,7 @@ def mostrar_login():
         """
         <style>
         /* ======================================================
-           PANTALLA DE LOGIN (colores del logo SIGPI)
+           PANTALLA DE LOGIN (colores del logo PODEX)
            ====================================================== */
         [data-testid="stSidebar"] { display: none !important; }
         header[data-testid="stHeader"] { display: none !important; }
@@ -87,56 +87,56 @@ def mostrar_login():
         [data-testid="stMainBlockContainer"] [data-testid="stVerticalBlock"] { gap: 0; }
         [data-testid="stForm"] [data-testid="stVerticalBlock"] { gap: 1rem; }
 
-        div[data-testid="stHorizontalBlock"]:has(.sigpi-marca) {
+        div[data-testid="stHorizontalBlock"]:has(.podex-marca) {
             gap: 0 !important;
             min-height: 100vh;
         }
 
         /* Panel izquierdo: logo sobre degradado claro */
-        div[data-testid="stColumn"]:has(.sigpi-marca) {
+        div[data-testid="stColumn"]:has(.podex-marca) {
             background:
                 radial-gradient(circle at 15% 20%, rgba(183, 213, 31, 0.20), transparent 45%),
                 radial-gradient(circle at 85% 85%, rgba(15, 115, 95, 0.16), transparent 45%),
                 linear-gradient(160deg, #F1F8EC 0%, #E7F3E6 55%, #EEF6DC 100%);
             border-right: 1px solid #DDE9DA;
         }
-        div[data-testid="stColumn"]:has(.sigpi-marca),
-        div[data-testid="stColumn"]:has(.sigpi-acceso) { min-height: 100vh; }
-        div[data-testid="stColumn"]:has(.sigpi-marca) > div,
-        div[data-testid="stColumn"]:has(.sigpi-acceso) > div {
+        div[data-testid="stColumn"]:has(.podex-marca),
+        div[data-testid="stColumn"]:has(.podex-acceso) { min-height: 100vh; }
+        div[data-testid="stColumn"]:has(.podex-marca) > div,
+        div[data-testid="stColumn"]:has(.podex-acceso) > div {
             height: 100%;
             display: flex;
             flex-direction: column;
             justify-content: center;
         }
-        div[data-testid="stColumn"]:has(.sigpi-marca) > div { padding: 2rem 3.5rem; }
-        div[data-testid="stColumn"]:has(.sigpi-acceso) > div { padding: 2rem 1.5rem; }
+        div[data-testid="stColumn"]:has(.podex-marca) > div { padding: 2rem 3.5rem; }
+        div[data-testid="stColumn"]:has(.podex-acceso) > div { padding: 2rem 1.5rem; }
 
-        div[data-testid="stColumn"]:has(.sigpi-marca) [data-testid="stElementContainer"],
-        div[data-testid="stColumn"]:has(.sigpi-marca) [data-testid="stImage"] > div {
+        div[data-testid="stColumn"]:has(.podex-marca) [data-testid="stElementContainer"],
+        div[data-testid="stColumn"]:has(.podex-marca) [data-testid="stImage"] > div {
             width: 100% !important;
         }
-        div[data-testid="stColumn"]:has(.sigpi-marca) [data-testid="stImage"] img {
+        div[data-testid="stColumn"]:has(.podex-marca) [data-testid="stImage"] img {
             display: block;
             margin: 0 auto;
-            width: min(460px, 66%) !important;
+            width: min(320px, 46%) !important;
             max-width: 100%;
             height: auto;
             filter: drop-shadow(0 12px 24px rgba(11, 61, 51, 0.16));
         }
 
         /* Panel derecho: acceso */
-        .sigpi-acceso { text-align: center; }
-        .sigpi-acceso h3 {
+        .podex-acceso { text-align: center; }
+        .podex-acceso h3 {
             color: #0B3D33;
             font-weight: 700;
             font-size: 1.75rem !important;
             margin: 0;
             padding: 0 0 0.3rem;
         }
-        .sigpi-acceso p { color: #5E6E69; font-size: 1.05rem; margin: 0 0 1.4rem; }
+        .podex-acceso p { color: #5E6E69; font-size: 1.05rem; margin: 0 0 1.4rem; }
 
-        div[data-testid="stColumn"]:has(.sigpi-acceso) [data-testid="stForm"] {
+        div[data-testid="stColumn"]:has(.podex-acceso) [data-testid="stForm"] {
             background: #FFFFFF;
             border: 1px solid #E2EBE4;
             border-radius: 14px;
@@ -158,25 +158,25 @@ def mostrar_login():
         }
         div[data-testid="stFormSubmitButton"] button:hover { filter: brightness(1.07); }
 
-        .sigpi-pie {
+        .podex-pie {
             text-align: center;
             color: #5E6E69;
             font-size: 0.83rem;
             line-height: 1.5;
             margin-top: 1.8rem;
         }
-        .sigpi-pie p { margin: 0 0 0.8rem; }
-        .sigpi-pie b { color: #0B3D33; }
-        .sigpi-pie .firma { font-size: 0.78rem; letter-spacing: 0.02em; }
+        .podex-pie p { margin: 0 0 0.8rem; }
+        .podex-pie b { color: #0B3D33; }
+        .podex-pie .firma { font-size: 0.78rem; letter-spacing: 0.02em; }
 
         @media (max-width: 640px) {
-            div[data-testid="stHorizontalBlock"]:has(.sigpi-marca),
-            div[data-testid="stColumn"]:has(.sigpi-marca),
-            div[data-testid="stColumn"]:has(.sigpi-acceso) { min-height: auto; }
-            div[data-testid="stColumn"]:has(.sigpi-marca) > div { padding: 2.5rem 1.5rem 2rem; }
-            div[data-testid="stColumn"]:has(.sigpi-acceso) > div { padding: 2rem 1rem; }
-            div[data-testid="stColumn"]:has(.sigpi-marca) [data-testid="stImage"] img {
-                width: 80% !important;
+            div[data-testid="stHorizontalBlock"]:has(.podex-marca),
+            div[data-testid="stColumn"]:has(.podex-marca),
+            div[data-testid="stColumn"]:has(.podex-acceso) { min-height: auto; }
+            div[data-testid="stColumn"]:has(.podex-marca) > div { padding: 2.5rem 1.5rem 2rem; }
+            div[data-testid="stColumn"]:has(.podex-acceso) > div { padding: 2rem 1rem; }
+            div[data-testid="stColumn"]:has(.podex-marca) [data-testid="stImage"] img {
+                width: 46% !important;
             }
         }
         </style>
@@ -187,13 +187,13 @@ def mostrar_login():
     marca, acceso = st.columns(2)
 
     with marca:
-        st.markdown('<div class="sigpi-marca"></div>', unsafe_allow_html=True)
-        st.image("Logo_SIGPI.png", use_container_width=True)
+        st.markdown('<div class="podex-marca"></div>', unsafe_allow_html=True)
+        st.image("Logo_PODEX.png", use_container_width=True)
 
     with acceso:
         st.markdown(
             """
-            <div class="sigpi-acceso">
+            <div class="podex-acceso">
                 <h3>Bienvenido de nuevo</h3>
                 <p>Ingresa con tus credenciales para continuar</p>
             </div>
@@ -221,8 +221,8 @@ def mostrar_login():
 
         st.markdown(
             """
-            <div class="sigpi-pie">
-                <p><b>SIGPI</b> · Sistema Integrado de Gestión de Peticiones e Incidentes<br>
+            <div class="podex-pie">
+                <p><b>PODEX</b> · Sistema Integrado de Gestión de Peticiones, Incidentes y Vulnerabilidades<br>
                 Acceso protegido mediante autenticación segura.</p>
                 <p class="firma">Powered by <b>JAJEROHE Systems</b></p>
             </div>
@@ -252,7 +252,7 @@ def mostrar_login():
                     cerrar_sesion()
                     st.error(
                         "❌ El usuario está autenticado en Supabase, "
-                        "pero no está registrado en SIGPI."
+                        "pero no está registrado en PODEX."
                     )
                     return
 
@@ -300,21 +300,21 @@ html,body,[data-testid="stAppViewContainer"]{background:var(--bg)!important}
 .block-container{padding:1.05rem 1.45rem 2rem!important;max-width:100%!important}
 section[data-testid="stSidebar"]{background:#fff!important;border-right:1px solid #e1e5e8!important;min-width:235px!important;width:235px!important}
 section[data-testid="stSidebar"]>div{padding:.8rem .8rem 1rem!important}
-.sigpi-side-brand{padding:4px 7px 13px;border-bottom:1px solid #edf0f1;margin-bottom:10px}
-.sigpi-side-title{color:var(--dark);font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;margin-top:3px}
-.sigpi-menu-section{color:#7b8582;font-size:10px;font-weight:800;text-transform:uppercase;margin:16px 7px 6px;letter-spacing:.6px}
-.sigpi-menu-item{display:flex;align-items:center;gap:9px;padding:9px;margin:3px 0;border-radius:7px;color:#40514d;font-size:12px;font-weight:600}
-.sigpi-menu-item.active{color:#fff;background:linear-gradient(90deg,#0b5b4d,#147b66);box-shadow:0 3px 10px rgba(11,91,77,.16)}
-.sigpi-menu-icon{width:21px;height:21px;display:inline-flex;align-items:center;justify-content:center;border-radius:5px;background:#edf6f2;font-size:12px}
-.sigpi-menu-item.active .sigpi-menu-icon{background:rgba(255,255,255,.18)}
-.sigpi-session-card{margin-top:14px;padding:10px;border:1px solid #e3e8e6;border-radius:9px;background:#f8faf9;font-size:10px;color:#5f6d69;line-height:1.65}
-.sigpi-session-card strong{color:var(--dark)}
-.sigpi-topbar{background:#fff;border:1px solid var(--border);border-radius:8px;min-height:64px;padding:9px 16px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 7px rgba(20,45,40,.04);margin-bottom:12px}
-.sigpi-top-title{color:var(--dark);font-size:18px;font-weight:800}.sigpi-top-subtitle{color:#7b8582;font-size:10px;margin-top:2px}.sigpi-user-pill{background:#f1f6f4;border:1px solid #dce9e4;color:#28564d;border-radius:20px;padding:7px 12px;font-size:10px;font-weight:700}
-.sigpi-step-card{background:#fff;border:1px solid var(--border);border-radius:8px;min-height:66px;padding:10px 13px;box-shadow:0 2px 7px rgba(20,45,40,.035)}
-.sigpi-step-card.active{border-color:#9ec91f;box-shadow:inset 0 3px 0 var(--lime)}
-.sigpi-step-number{color:#7b8582;font-size:9px;font-weight:800;text-transform:uppercase}.sigpi-step-name{color:#1b4038;font-size:12px;font-weight:800;margin-top:3px}.sigpi-step-state{color:#73807c;font-size:9px;margin-top:3px}
-.sigpi-section-title{color:#16473e;font-size:15px;font-weight:800;margin:2px 0 5px}.sigpi-section-caption{color:#7b8582;font-size:10px;margin-bottom:8px}
+.podex-side-brand{padding:4px 7px 13px;border-bottom:1px solid #edf0f1;margin-bottom:10px}
+.podex-side-title{color:var(--dark);font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;margin-top:3px}
+.podex-menu-section{color:#7b8582;font-size:10px;font-weight:800;text-transform:uppercase;margin:16px 7px 6px;letter-spacing:.6px}
+.podex-menu-item{display:flex;align-items:center;gap:9px;padding:9px;margin:3px 0;border-radius:7px;color:#40514d;font-size:12px;font-weight:600}
+.podex-menu-item.active{color:#fff;background:linear-gradient(90deg,#0b5b4d,#147b66);box-shadow:0 3px 10px rgba(11,91,77,.16)}
+.podex-menu-icon{width:21px;height:21px;display:inline-flex;align-items:center;justify-content:center;border-radius:5px;background:#edf6f2;font-size:12px}
+.podex-menu-item.active .podex-menu-icon{background:rgba(255,255,255,.18)}
+.podex-session-card{margin-top:14px;padding:10px;border:1px solid #e3e8e6;border-radius:9px;background:#f8faf9;font-size:10px;color:#5f6d69;line-height:1.65}
+.podex-session-card strong{color:var(--dark)}
+.podex-topbar{background:#fff;border:1px solid var(--border);border-radius:8px;min-height:64px;padding:9px 16px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 7px rgba(20,45,40,.04);margin-bottom:12px}
+.podex-top-title{color:var(--dark);font-size:18px;font-weight:800}.podex-top-subtitle{color:#7b8582;font-size:10px;margin-top:2px}.podex-user-pill{background:#f1f6f4;border:1px solid #dce9e4;color:#28564d;border-radius:20px;padding:7px 12px;font-size:10px;font-weight:700}
+.podex-step-card{background:#fff;border:1px solid var(--border);border-radius:8px;min-height:66px;padding:10px 13px;box-shadow:0 2px 7px rgba(20,45,40,.035)}
+.podex-step-card.active{border-color:#9ec91f;box-shadow:inset 0 3px 0 var(--lime)}
+.podex-step-number{color:#7b8582;font-size:9px;font-weight:800;text-transform:uppercase}.podex-step-name{color:#1b4038;font-size:12px;font-weight:800;margin-top:3px}.podex-step-state{color:#73807c;font-size:9px;margin-top:3px}
+.podex-section-title{color:#16473e;font-size:15px;font-weight:800;margin:2px 0 5px}.podex-section-caption{color:#7b8582;font-size:10px;margin-bottom:8px}
 div[data-testid="stVerticalBlockBorderWrapper"]{border-color:var(--border)!important;border-radius:8px!important;background:#fff!important}
 div[data-testid="stFileUploader"]{background:#f7f9f8!important;border:1px dashed #b9c9c4!important;border-radius:7px!important}
 div[data-testid="stTextInput"] input,div[data-testid="stTextArea"] textarea,div[data-baseweb="select"]>div{border-radius:6px!important}
@@ -324,7 +324,7 @@ div[data-testid="stAlert"]{border-radius:7px!important}
 .tabla-header{color:#356158!important;font-size:10px!important;font-weight:800!important;text-transform:uppercase;letter-spacing:.2px;line-height:1.1!important;white-space:nowrap;padding:0!important}.tabla-cell{color:#40514d!important;font-size:10px!important;line-height:1.15!important;min-height:24px!important;padding:5px 3px!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-bottom:1px solid #edf0ef}div[data-testid="column"]{padding-top:0!important;padding-bottom:0!important}
 div[data-testid="stButton"]>button{border-radius:6px!important;min-height:27px!important;height:27px!important;padding:0 7px!important;font-size:11px!important;color:var(--dark)!important;border:1px solid #cfe0db!important;background:#f5f9f7!important}div[data-testid="stButton"]>button:hover{background:#e8f2ee!important;border-color:#9fc3b8!important}
 div[data-testid="stFormSubmitButton"]>button{border-radius:6px!important;min-height:32px!important;font-weight:700!important}hr{margin:8px 0!important;border-color:#e3e8e6!important}
-@media(max-width:900px){.block-container{padding:.7rem .75rem 1.5rem!important}section[data-testid="stSidebar"]{min-width:200px!important;width:200px!important}.sigpi-topbar{min-height:58px}}
+@media(max-width:900px){.block-container{padding:.7rem .75rem 1.5rem!important}section[data-testid="stSidebar"]{min-width:200px!important;width:200px!important}.podex-topbar{min-height:58px}}
 </style>
 """,unsafe_allow_html=True)
 
@@ -332,23 +332,23 @@ div[data-testid="stFormSubmitButton"]>button{border-radius:6px!important;min-hei
 # ENCABEZADO DE SESIÓN / SIDEBAR
 # ============================================================
 with st.sidebar:
-    st.markdown('<div class="sigpi-side-brand">',unsafe_allow_html=True)
-    st.image("Logo_SIGPI.png",width=175)
-    st.markdown('<div class="sigpi-side-title">Sistema Integrado de Gestión</div></div>',unsafe_allow_html=True)
+    st.markdown('<div class="podex-side-brand">',unsafe_allow_html=True)
+    st.image("Logo_PODEX.png",width=175)
+    st.markdown('<div class="podex-side-title">Sistema Integrado de Gestión</div></div>',unsafe_allow_html=True)
     st.markdown("""
-    <div class="sigpi-menu-section">Operaciones</div>
-    <div class="sigpi-menu-item active"><span class="sigpi-menu-icon">▣</span>Solicitudes</div>
-    <div class="sigpi-menu-item"><span class="sigpi-menu-icon">↻</span>Gestiones</div>
+    <div class="podex-menu-section">Operaciones</div>
+    <div class="podex-menu-item active"><span class="podex-menu-icon">▣</span>Solicitudes</div>
+    <div class="podex-menu-item"><span class="podex-menu-icon">↻</span>Gestiones</div>
     """,unsafe_allow_html=True)
 
     if es_administrador:
         st.markdown("""
-        <div class="sigpi-menu-item"><span class="sigpi-menu-icon">⇧</span>Carga de información</div>
+        <div class="podex-menu-item"><span class="podex-menu-icon">⇧</span>Carga de información</div>
         """,unsafe_allow_html=True)
 
-    st.markdown('<div class="sigpi-menu-section">Sesión</div>',unsafe_allow_html=True)
+    st.markdown('<div class="podex-menu-section">Sesión</div>',unsafe_allow_html=True)
     st.markdown(f"""
-    <div class="sigpi-session-card"><strong>{nombre_actual or usuario_actual}</strong><br>
+    <div class="podex-session-card"><strong>{nombre_actual or usuario_actual}</strong><br>
     Usuario: {usuario_actual}<br>Perfil: {perfil_actual or 'Sin perfil'}</div>
     """,unsafe_allow_html=True)
     if st.button("🚪 Cerrar sesión",use_container_width=True):
@@ -361,15 +361,15 @@ with st.sidebar:
 # ENCABEZADO INTERNO
 # ============================================================
 st.markdown(f"""
-<div class="sigpi-topbar"><div><div class="sigpi-top-title">Gestión de Solicitudes</div>
-<div class="sigpi-top-subtitle">Sistema Integrado de Gestión de Peticiones e Incidentes · SIGPI</div></div>
-<div class="sigpi-user-pill">👤 {nombre_actual or usuario_actual} · {perfil_actual or 'Usuario'}</div></div>
+<div class="podex-topbar"><div><div class="podex-top-title">Gestión de Solicitudes</div>
+<div class="podex-top-subtitle">Sistema Integrado de Gestión de Peticiones, Incidentes y Vulnerabilidades · PODEX</div></div>
+<div class="podex-user-pill">👤 {nombre_actual or usuario_actual} · {perfil_actual or 'Usuario'}</div></div>
 """,unsafe_allow_html=True)
 
 step1,step2,step3=st.columns([1,1,1],gap="small")
-with step1: st.markdown('<div class="sigpi-step-card active"><div class="sigpi-step-number">PASO 1</div><div class="sigpi-step-name">Consultar solicitudes</div><div class="sigpi-step-state">Gestión y seguimiento</div></div>',unsafe_allow_html=True)
-with step2: st.markdown('<div class="sigpi-step-card"><div class="sigpi-step-number">PASO 2</div><div class="sigpi-step-name">Registrar gestión</div><div class="sigpi-step-state">Observaciones y trazabilidad</div></div>',unsafe_allow_html=True)
-with step3: st.markdown('<div class="sigpi-step-card"><div class="sigpi-step-number">PASO 3</div><div class="sigpi-step-name">Actualizar solicitud</div><div class="sigpi-step-state">Cierre y estado</div></div>',unsafe_allow_html=True)
+with step1: st.markdown('<div class="podex-step-card active"><div class="podex-step-number">PASO 1</div><div class="podex-step-name">Consultar solicitudes</div><div class="podex-step-state">Gestión y seguimiento</div></div>',unsafe_allow_html=True)
+with step2: st.markdown('<div class="podex-step-card"><div class="podex-step-number">PASO 2</div><div class="podex-step-name">Registrar gestión</div><div class="podex-step-state">Observaciones y trazabilidad</div></div>',unsafe_allow_html=True)
+with step3: st.markdown('<div class="podex-step-card"><div class="podex-step-number">PASO 3</div><div class="podex-step-name">Actualizar solicitud</div><div class="podex-step-state">Cierre y estado</div></div>',unsafe_allow_html=True)
 st.markdown('<div style="height:8px"></div>',unsafe_allow_html=True)
 
 # ============================================================
@@ -379,8 +379,8 @@ archivo_excel = None
 
 if es_administrador:
     with st.container(border=True):
-        st.markdown('<div class="sigpi-section-title">📥 Cargar solicitudes desde Excel</div>',unsafe_allow_html=True)
-        st.markdown('<div class="sigpi-section-caption">Seleccione el archivo de origen para analizar y cargar las solicitudes en SIGPI.</div>',unsafe_allow_html=True)
+        st.markdown('<div class="podex-section-title">📥 Cargar solicitudes desde Excel</div>',unsafe_allow_html=True)
+        st.markdown('<div class="podex-section-caption">Seleccione el archivo de origen para analizar y cargar las solicitudes en PODEX.</div>',unsafe_allow_html=True)
         archivo_excel=st.file_uploader(
             "Seleccione un archivo Excel",
             type=["xlsx"],
