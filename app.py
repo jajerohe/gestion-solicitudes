@@ -8,7 +8,7 @@ from excel_web import analizar_excel, cargar_excel
 from auth import iniciar_sesion, cerrar_sesion
 
 st.set_page_config(
-    page_title="PODEX - Sistema de Gestión POD Extendido",
+    page_title="PODEX - Sistema de Gestión POD's Extendidos",
     page_icon="📋",
     layout="wide"
 )
