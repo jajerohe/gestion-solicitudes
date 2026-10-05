@@ -506,7 +506,7 @@ def obtener_gestiones(id_solicitud):
         db.execute("SET TIME ZONE 'America/Bogota'")
         db.execute('''
             SELECT "FECHA_GESTION","OBSERVACION"
-            FROM public."Gestiones"
+            FROM public."GESTIONES"
             WHERE "ID_SOLICITUD" = %s
             ORDER BY "FECHA_GESTION" DESC
         ''', (id_solicitud,))
