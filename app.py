@@ -4,7 +4,7 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 from database import Database
-from excel_web import analizar_excel, cargar_excel
+from excel_web import analizar_excel, cargar_excel, normalizar_product_owner
 from auth import iniciar_sesion, cerrar_sesion
 
 st.set_page_config(
@@ -326,7 +326,7 @@ section[data-testid="stSidebar"]>div{padding:.8rem .8rem 1rem!important}
 div[data-testid="stVerticalBlockBorderWrapper"]{border-color:var(--border)!important;border-radius:8px!important;background:#fff!important}
 div[data-testid="stFileUploader"]{background:#f7f9f8!important;border:1px dashed #b9c9c4!important;border-radius:7px!important}
 div[data-testid="stTextInput"] input,div[data-testid="stTextArea"] textarea,div[data-baseweb="select"]>div{border-radius:6px!important}
-button[kind="primary"]{background:var(--dark)!important;border-color:var(--dark)!important;border-radius:6px!important;font-weight:700!important}button[kind="primary"]:hover{background:#08493e!important;border-color:#08493e!important}
+button[kind="primaryFormSubmit"]{background:var(--dark)!important;border-color:var(--dark)!important;color:#fff!important}button[kind="primaryFormSubmit"]:hover{background:#08493e!important;border-color:#08493e!important}button[kind="primary"]{background:var(--dark)!important;border-color:var(--dark)!important;border-radius:6px!important;font-weight:700!important}button[kind="primary"]:hover{background:#08493e!important;border-color:#08493e!important}
 [data-testid="stMetric"]{background:#fff;border:1px solid var(--border);border-radius:7px;padding:9px 11px}[data-testid="stMetricLabel"]{color:#70807a!important}[data-testid="stMetricValue"]{color:var(--dark)!important}
 div[data-testid="stAlert"]{border-radius:7px!important}
 .tabla-header{color:#356158!important;font-size:10px!important;font-weight:800!important;text-transform:uppercase;letter-spacing:.2px;line-height:1.1!important;white-space:nowrap;padding:0!important}.tabla-cell{color:#40514d!important;font-size:10px!important;line-height:1.15!important;min-height:24px!important;padding:5px 3px!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-bottom:1px solid #edf0ef}div[data-testid="column"]{padding-top:0!important;padding-bottom:0!important}
@@ -403,7 +403,8 @@ if es_administrador and pagina_actual == "cargar":
         archivo_excel=st.file_uploader(
             "Seleccione un archivo Excel",
             type=["xlsx"],
-            help="Se procesarán únicamente DETALLE_GENERAL y DETALLE_FUNCIONALES."
+            help="Se procesarán únicamente DETALLE_GENERAL y DETALLE_FUNCIONALES.",
+            key=f"archivo_excel_{st.session_state.get('uploader_version', 0)}"
         )
 
 
@@ -533,114 +534,215 @@ def guardar_auditoria(
         fecha_actual
     ))
 
-if es_administrador and archivo_excel is not None:
-    st.info(f"📄 Archivo seleccionado: {archivo_excel.name}")
-    c1, c2 = st.columns(2)
+def obtener_pods():
+    """Devuelve la tabla PODS (ID_POD, NOMBRE). Solo se cargan las
+    solicitudes cuyo PRODUCT_OWNER coincide con un NOMBRE de esta tabla."""
+    db = Database()
+    try:
+        db.conectar()
+        db.execute('SELECT "ID_POD","NOMBRE" FROM public."PODS" ORDER BY "ID_POD"')
+        return pd.DataFrame(db.fetchall(), columns=["ID_POD", "NOMBRE"])
+    finally:
+        db.cerrar()
 
+
+def ejecutar_carga(archivo, product_owners):
+    """Carga las solicitudes del archivo y registra la auditoría."""
+    db = Database()
+
+    try:
+        db.conectar()
+
+        with st.spinner("Cargando solicitudes en Supabase..."):
+            # Cargar las solicitudes
+            resultado = cargar_excel(archivo, db, product_owners)
+
+            # Garantizar que todos los TITULO queden almacenados en MAYÚSCULAS.
+            db.execute("""
+                UPDATE public."SOLICITUDES"
+                SET "TITULO" = UPPER("TITULO")
+                WHERE "TITULO" IS NOT NULL
+            """)
+
+            generales = int(resultado.get("generales", 0) or 0)
+            funcionales = int(resultado.get("funcionales", 0) or 0)
+            duplicados = int(resultado.get("duplicados", 0) or 0)
+            errores = int(resultado.get("errores", 0) or 0)
+
+            # Estado de la auditoría
+            estado_auditoria = "EXITOSO" if errores == 0 else "CON ERRORES"
+
+            observaciones = (
+                f"Archivo procesado. "
+                f"Duplicados: {duplicados}. "
+                f"Errores: {errores}."
+            )
+
+            # Guardar auditoría usando la misma conexión
+            guardar_auditoria(
+                db=db,
+                nombre_archivo=archivo.name,
+                registros_generales=generales,
+                registros_funcionales=funcionales,
+                estado=estado_auditoria,
+                observaciones=observaciones,
+                usuario_carga="Janssen Rodríguez"
+            )
+
+            # Confirmar solicitudes + auditoría
+            db.commit()
+
+        # El resultado se muestra después del st.rerun().
+        st.session_state["resultado_carga"] = {
+            "archivo": archivo.name,
+            "generales": generales,
+            "funcionales": funcionales,
+            "duplicados": duplicados,
+            "errores": errores,
+        }
+        # Limpia el archivo seleccionado para evitar cargarlo dos veces.
+        st.session_state["uploader_version"] = st.session_state.get("uploader_version", 0) + 1
+        return True
+
+    except Exception as e:
+        db.rollback()
+        st.error(
+            "❌ No fue posible cargar el archivo ni registrar la auditoría."
+        )
+        st.error(f"Detalle del error: {e}")
+        st.exception(e)
+        return False
+
+    finally:
+        db.cerrar()
+
+
+# ============================================================
+# VENTANA TIPO OVERLAY PARA CONFIRMAR LA CARGA
+# ============================================================
+@st.dialog("⚙️ Confirmar carga de solicitudes", width="large")
+def ventana_confirmar_carga(archivo, preview, product_owners):
+
+    st.markdown("### 📄 Información a cargar")
+
+    c1, c2, c3, c4 = st.columns(4)
     with c1:
-        analizar = st.button("🔎 Analizar archivo", use_container_width=True)
+        st.markdown(f"**ARCHIVO**  \n{archivo.name}")
     with c2:
-        cargar = st.button("💾 Cargar a Supabase", type="primary", use_container_width=True)
+        st.markdown(f"**SOLICITUDES**  \n{len(preview)}")
+    with c3:
+        st.markdown(
+            f"**DETALLE_GENERAL**  \n"
+            f"{(preview['HOJA'] == 'DETALLE_GENERAL').sum()}"
+        )
+    with c4:
+        st.markdown(
+            f"**DETALLE_FUNCIONALES**  \n"
+            f"{(preview['HOJA'] == 'DETALLE_FUNCIONALES').sum()}"
+        )
 
-    if analizar:
-        try:
-            with st.spinner("Analizando archivo Excel..."):
-                preview = analizar_excel(archivo_excel)
+    st.divider()
 
-            st.success(
-                f"✅ Análisis terminado. {len(preview)} registro(s) "
-                "cumplen el filtro de Product Owner."
+    st.markdown("### ❓ ¿Está seguro que desea cargar estas solicitudes?")
+
+    with st.form("form_confirmar_carga"):
+        c_si, c_no = st.columns(2)
+        with c_si:
+            confirmar = st.form_submit_button(
+                "✅ Sí, cargar solicitudes",
+                type="primary",
+                use_container_width=True
+            )
+        with c_no:
+            cancelar = st.form_submit_button(
+                "❌ Cancelar",
+                use_container_width=True
             )
 
-            a, b, c = st.columns(3)
-            with a:
-                st.metric("Registros filtrados", len(preview))
-            with b:
-                st.metric("DETALLE_GENERAL", len(preview[preview["ORIGEN"].astype(str).str.upper() == "DETALLE_GENERAL"]))
-            with c:
-                st.metric("DETALLE_FUNCIONALES", len(preview[preview["ORIGEN"].astype(str).str.upper() == "DETALLE_FUNCIONALES"]))
+    if cancelar:
+        st.rerun()
 
-            if not preview.empty:
-                st.subheader("👥 Product Owner encontrados")
-                resumen = preview["PRODUCT_OWNER"].value_counts().reset_index()
-                resumen.columns = ["PRODUCT_OWNER", "CANTIDAD"]
-                st.dataframe(resumen, use_container_width=True, hide_index=True)
+    if confirmar and ejecutar_carga(archivo, product_owners):
+        st.rerun()
 
-                st.subheader("📋 Registros que cumplen el filtro")
-                st.dataframe(preview, use_container_width=True, hide_index=True)
-            else:
-                st.warning("⚠️ No se encontraron registros de los tres Product Owner autorizados.")
-        except Exception as e:
-            st.error("❌ Error analizando el archivo.")
-            st.exception(e)
 
-    if cargar:
-        db = Database()
+if es_administrador and pagina_actual == "cargar":
 
-        try:
-            db.conectar()
+    resultado_carga = st.session_state.pop("resultado_carga", None)
+    if resultado_carga:
+        st.success(
+            f"✅ Archivo {resultado_carga['archivo']} cargado y "
+            "auditoría registrada correctamente."
+        )
+        a, b, c, d = st.columns(4)
+        a.metric("Generales", resultado_carga["generales"])
+        b.metric("Funcionales", resultado_carga["funcionales"])
+        c.metric("Duplicados", resultado_carga["duplicados"])
+        d.metric("Errores", resultado_carga["errores"])
 
-            with st.spinner("Cargando solicitudes en Supabase..."):
-                # Cargar las solicitudes
-                resultado = cargar_excel(archivo_excel, db)
+if es_administrador and archivo_excel is not None:
+    try:
+        pods = obtener_pods()
+    except Exception as e:
+        st.error("❌ No fue posible consultar la tabla PODS.")
+        st.exception(e)
+        st.stop()
 
-                # Garantizar que todos los TITULO queden almacenados en MAYÚSCULAS.
-                db.execute("""
-                    UPDATE public."SOLICITUDES"
-                    SET "TITULO" = UPPER("TITULO")
-                    WHERE "TITULO" IS NOT NULL
-                """)
+    product_owners = pods["NOMBRE"].dropna().tolist()
 
-                generales = int(resultado.get("generales", 0) or 0)
-                funcionales = int(resultado.get("funcionales", 0) or 0)
-                duplicados = int(resultado.get("duplicados", 0) or 0)
-                errores = int(resultado.get("errores", 0) or 0)
+    if not product_owners:
+        st.warning("⚠️ La tabla PODS no tiene registros; no hay solicitudes para cargar.")
+        st.stop()
 
-                # Estado de la auditoría
-                estado_auditoria = "EXITOSO" if errores == 0 else "CON ERRORES"
+    try:
+        with st.spinner("Analizando archivo Excel..."):
+            preview = analizar_excel(archivo_excel, product_owners)
+    except Exception as e:
+        st.error("❌ Error analizando el archivo.")
+        st.exception(e)
+        st.stop()
 
-                observaciones = (
-                    f"Archivo procesado. "
-                    f"Duplicados: {duplicados}. "
-                    f"Errores: {errores}."
-                )
+    with st.container(border=True):
+        st.markdown('<div class="podex-section-title">👁️ Vista previa de la información a cargar</div>',unsafe_allow_html=True)
+        st.markdown(f'<div class="podex-section-caption">Archivo: {archivo_excel.name} · Solo se incluyen solicitudes de los POD registrados en la tabla PODS.</div>',unsafe_allow_html=True)
 
-                # Guardar auditoría usando la misma conexión
-                guardar_auditoria(
-                    db=db,
-                    nombre_archivo=archivo_excel.name,
-                    registros_generales=generales,
-                    registros_funcionales=funcionales,
-                    estado=estado_auditoria,
-                    observaciones=observaciones,
-                    usuario_carga="Janssen Rodríguez"
-                )
+        if preview.empty:
+            st.warning("⚠️ El archivo no contiene solicitudes de los POD registrados en la tabla PODS.")
+            st.stop()
 
-                # Confirmar solicitudes + auditoría
-                db.commit()
+        # Asociar cada solicitud con el ID_POD de su Product Owner.
+        id_pod_por_nombre = {
+            normalizar_product_owner(n): i
+            for i, n in zip(pods["ID_POD"], pods["NOMBRE"])
+        }
+        preview.insert(1, "ID_POD", preview["PRODUCT_OWNER"].map(id_pod_por_nombre))
 
-            st.success(
-                "✅ Archivo cargado y auditoría registrada correctamente."
-            )
+        a, b, c = st.columns(3)
+        a.metric("Solicitudes a cargar", len(preview))
+        b.metric("DETALLE_GENERAL", int((preview["HOJA"] == "DETALLE_GENERAL").sum()))
+        c.metric("DETALLE_FUNCIONALES", int((preview["HOJA"] == "DETALLE_FUNCIONALES").sum()))
 
-            a, b, c, d = st.columns(4)
-            a.metric("Generales", generales)
-            b.metric("Funcionales", funcionales)
-            c.metric("Duplicados", duplicados)
-            d.metric("Errores", errores)
+        st.markdown("**👥 Solicitudes por POD**")
+        resumen = (
+            preview.groupby(["ID_POD", "PRODUCT_OWNER"])
+            .size()
+            .reset_index(name="CANTIDAD")
+            .sort_values("ID_POD")
+        )
+        st.dataframe(resumen, use_container_width=True, hide_index=True)
 
-            st.rerun()
+        st.markdown("**📋 Solicitudes**")
+        st.dataframe(
+            preview[[
+                "ID_SOLICITUD", "ID_POD", "PRODUCT_OWNER", "HOJA", "STATUS",
+                "FECHA_APERTURA", "TITULO", "SUBSERVICIO_AFECTADO"
+            ]],
+            use_container_width=True,
+            hide_index=True
+        )
 
-        except Exception as e:
-            db.rollback()
-            st.error(
-                "❌ No fue posible cargar el archivo ni registrar la auditoría."
-            )
-            st.error(f"Detalle del error: {e}")
-            st.exception(e)
-
-        finally:
-            db.cerrar()
+        if st.button("💾 Cargar solicitudes", type="primary"):
+            ventana_confirmar_carga(archivo_excel, preview, product_owners)
 
 # La página de carga termina aquí; el resto corresponde a la página de solicitudes.
 if pagina_actual == "cargar":

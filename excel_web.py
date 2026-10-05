@@ -3,12 +3,6 @@ import pandas as pd
 
 HOJAS = ["DETALLE_GENERAL", "DETALLE_FUNCIONALES"]
 
-PRODUCT_OWNERS = {
-    "ALIRIO GUERRERO PEÑA",
-    "DAVID CABAL ORDONEZ",
-    "WILLIAM ANTONIO DELGADO PEÑA",
-}
-
 COLUMNAS_OBLIGATORIAS = {
     "ID_SOLICITUD", "PRODUCT_OWNER", "STATUS", "FECHA_APERTURA"
 }
@@ -61,14 +55,18 @@ def limpiar_valor(valor):
         return valor if valor else None
     return valor
 
-def procesar_hoja(df, hoja):
+def normalizar_product_owner(valor):
+    return " ".join(str(valor or "").split()).upper()
+
+def procesar_hoja(df, hoja, product_owners):
+    """Filtra la hoja dejando solo las solicitudes de los Product Owner
+    recibidos (los NOMBRE de la tabla PODS)."""
     df = normalizar_columnas(df)
     validar_columnas(df)
 
-    df["PRODUCT_OWNER"] = (
-        df["PRODUCT_OWNER"].fillna("").astype(str).str.strip().str.upper()
-    )
-    df = df[df["PRODUCT_OWNER"].isin(PRODUCT_OWNERS)].copy()
+    permitidos = {normalizar_product_owner(po) for po in product_owners}
+    df["PRODUCT_OWNER"] = df["PRODUCT_OWNER"].map(normalizar_product_owner)
+    df = df[df["PRODUCT_OWNER"].isin(permitidos)].copy()
 
     if "FECHA_APERTURA" in df.columns:
         df["FECHA_APERTURA"] = pd.to_datetime(df["FECHA_APERTURA"], errors="coerce")
@@ -90,7 +88,7 @@ def preparar_registro(fila, hoja):
             valores.append(limpiar_valor(fila.get(columna)))
     return tuple(valores)
 
-def analizar_excel(archivo):
+def analizar_excel(archivo, product_owners):
     resultados = []
     excel = pd.ExcelFile(archivo)
 
@@ -98,7 +96,7 @@ def analizar_excel(archivo):
         if hoja not in excel.sheet_names:
             continue
         df = pd.read_excel(excel, sheet_name=hoja)
-        df = procesar_hoja(df, hoja)
+        df = procesar_hoja(df, hoja, product_owners)
 
         for _, fila in df.iterrows():
             resultados.append({
@@ -108,13 +106,14 @@ def analizar_excel(archivo):
                 "STATUS": limpiar_valor(fila.get("STATUS")),
                 "FECHA_APERTURA": limpiar_valor(fila.get("FECHA_APERTURA")),
                 "TITULO": limpiar_valor(fila.get("TITULO")),
+                "SUBSERVICIO_AFECTADO": limpiar_valor(fila.get("SUBSERVICIO_AFECTADO")),
                 "RANGTIEMPO": limpiar_valor(fila.get("RANGTIEMPO")),
                 "DIFDIAS": limpiar_valor(fila.get("DIFDIAS")),
             })
 
     return pd.DataFrame(resultados)
 
-def cargar_excel(archivo, db):
+def cargar_excel(archivo, db, product_owners):
     resultado = {
         "generales": 0, "funcionales": 0, "duplicados": 0,
         "errores": 0, "hojas": []
@@ -165,7 +164,7 @@ def cargar_excel(archivo, db):
             continue
 
         df = procesar_hoja(
-            pd.read_excel(excel, sheet_name=hoja), hoja
+            pd.read_excel(excel, sheet_name=hoja), hoja, product_owners
         )
         resultado["hojas"].append({"hoja": hoja, "registros": len(df)})
 
