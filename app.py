@@ -286,6 +286,11 @@ nombre_actual = st.session_state.get("nombre_actual", "")
 # Perfil Operador: acceso restringido a las solicitudes de sus POD asignados.
 es_administrador = str(perfil_actual or "").strip().lower() == "administrador"
 
+# Página activa del menú lateral: "solicitudes" o "cargar" (solo administrador).
+if "pagina_actual" not in st.session_state or not es_administrador:
+    st.session_state["pagina_actual"] = "solicitudes"
+pagina_actual = st.session_state["pagina_actual"]
+
 # ============================================================
 # ESTILO GENERAL DE LA APLICACIÓN
 # Diseño interno inspirado en Supervisor Operativo:
@@ -307,6 +312,12 @@ section[data-testid="stSidebar"]>div{padding:.8rem .8rem 1rem!important}
 .podex-menu-item.active{color:#fff;background:linear-gradient(90deg,#0b5b4d,#147b66);box-shadow:0 3px 10px rgba(11,91,77,.16)}
 .podex-menu-icon{width:21px;height:21px;display:inline-flex;align-items:center;justify-content:center;border-radius:5px;background:#edf6f2;font-size:12px}
 .podex-menu-item.active .podex-menu-icon{background:rgba(255,255,255,.18)}
+.st-key-podex_menu div[data-testid="stButton"]>button{justify-content:flex-start!important;height:auto!important;min-height:38px!important;padding:9px!important;margin:0!important;border:none!important;border-radius:7px!important;background:transparent!important;color:#40514d!important;font-size:12px!important;font-weight:600!important;box-shadow:none!important}
+.st-key-podex_menu div[data-testid="stButton"]>button:hover{background:#edf6f2!important}
+.st-key-podex_menu div[data-testid="stButton"]>button[kind="primary"]{color:#fff!important;background:linear-gradient(90deg,#0b5b4d,#147b66)!important;box-shadow:0 3px 10px rgba(11,91,77,.16)!important}
+.st-key-podex_menu div[data-testid="stButton"]>button>div{justify-content:flex-start!important;width:100%!important}
+.st-key-podex_menu div[data-testid="stButton"]>button p{font-size:12px!important;font-weight:600!important;text-align:left!important}
+.st-key-podex_menu{gap:3px!important}
 .podex-session-card{margin-top:14px;padding:10px;border:1px solid #e3e8e6;border-radius:9px;background:#f8faf9;font-size:10px;color:#5f6d69;line-height:1.65}
 .podex-session-card strong{color:var(--dark)}
 .podex-topbar{background:#fff;border:1px solid #9ec91f;border-radius:8px;min-height:64px;padding:9px 16px;display:flex;align-items:center;justify-content:space-between;box-shadow:inset 0 3px 0 var(--lime);margin-bottom:12px}
@@ -332,9 +343,24 @@ with st.sidebar:
     st.markdown('<div class="podex-side-brand">',unsafe_allow_html=True)
     st.image("Logo_PODEX.png",width=175)
     st.markdown('<div class="podex-side-title">Sistema Integrado de Gestión</div></div>',unsafe_allow_html=True)
+    st.markdown('<div class="podex-menu-section">Operaciones</div>',unsafe_allow_html=True)
+
+    opciones_menu = [("solicitudes", "▣  Solicitudes")]
+    if es_administrador:
+        opciones_menu.append(("cargar", "📥  Cargar solicitudes"))
+
+    with st.container(key="podex_menu"):
+        for clave_pagina, etiqueta in opciones_menu:
+            if st.button(
+                etiqueta,
+                key=f"menu_{clave_pagina}",
+                type="primary" if pagina_actual == clave_pagina else "secondary",
+                use_container_width=True
+            ):
+                st.session_state["pagina_actual"] = clave_pagina
+                st.rerun()
+
     st.markdown("""
-    <div class="podex-menu-section">Operaciones</div>
-    <div class="podex-menu-item active"><span class="podex-menu-icon">▣</span>Solicitudes</div>
     <div class="podex-menu-item"><span class="podex-menu-icon">↻</span>Gestiones</div>
     """,unsafe_allow_html=True)
 
@@ -358,7 +384,7 @@ with st.sidebar:
 # ENCABEZADO INTERNO
 # ============================================================
 st.markdown(f"""
-<div class="podex-topbar"><div><div class="podex-top-title">Gestión de Solicitudes</div>
+<div class="podex-topbar"><div><div class="podex-top-title">{'Cargar Solicitudes' if pagina_actual == 'cargar' else 'Gestión de Solicitudes'}</div>
 <div class="podex-top-subtitle">Sistema Integrado de Gestión de Peticiones, Incidentes y Vulnerabilidades · PODEX</div></div>
 <div class="podex-user-pill">👤 {nombre_actual or usuario_actual} · {perfil_actual or 'Usuario'}</div></div>
 """,unsafe_allow_html=True)
@@ -370,7 +396,7 @@ st.markdown('<div style="height:8px"></div>',unsafe_allow_html=True)
 # ============================================================
 archivo_excel = None
 
-if es_administrador:
+if es_administrador and pagina_actual == "cargar":
     with st.container(border=True):
         st.markdown('<div class="podex-section-title">📥 Cargar solicitudes desde Excel</div>',unsafe_allow_html=True)
         st.markdown('<div class="podex-section-caption">Seleccione el archivo de origen para analizar y cargar las solicitudes en PODEX.</div>',unsafe_allow_html=True)
@@ -615,6 +641,10 @@ if es_administrador and archivo_excel is not None:
 
         finally:
             db.cerrar()
+
+# La página de carga termina aquí; el resto corresponde a la página de solicitudes.
+if pagina_actual == "cargar":
+    st.stop()
 
 try:
     df = obtener_solicitudes(usuario_actual, es_administrador)
