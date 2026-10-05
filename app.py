@@ -319,8 +319,6 @@ section[data-testid="stSidebar"]>div{padding:.8rem .8rem 1rem!important}
 .st-key-podex_menu div[data-testid="stButton"]>button>div,.st-key-podex_menu_admin div[data-testid="stButton"]>button>div{justify-content:flex-start!important;width:100%!important}
 .st-key-podex_menu div[data-testid="stButton"]>button p,.st-key-podex_menu_admin div[data-testid="stButton"]>button p{font-size:12px!important;font-weight:600!important;text-align:left!important}
 .st-key-podex_menu,.st-key-podex_menu_admin{gap:3px!important}
-.podex-session-card{margin-top:14px;padding:10px;border:1px solid #e3e8e6;border-radius:9px;background:#f8faf9;font-size:10px;color:#5f6d69;line-height:1.65}
-.podex-session-card strong{color:var(--dark)}
 .podex-topbar{background:#fff;border:1px solid #9ec91f;border-radius:8px;min-height:64px;padding:9px 16px;display:flex;align-items:center;justify-content:space-between;box-shadow:inset 0 3px 0 var(--lime);margin-bottom:12px}
 .podex-top-title{color:var(--dark);font-size:18px;font-weight:800}.podex-top-subtitle{color:#7b8582;font-size:10px;margin-top:2px}.podex-user-pill{background:#f1f6f4;border:1px solid #dce9e4;color:#28564d;border-radius:20px;padding:7px 12px;font-size:10px;font-weight:700}
 .podex-section-title{color:#16473e;font-size:15px;font-weight:800;margin:2px 0 5px}.podex-section-caption{color:#7b8582;font-size:10px;margin-bottom:8px}
@@ -369,10 +367,6 @@ with st.sidebar:
     mostrar_menu("podex_menu", opciones_menu)
 
     st.markdown('<div class="podex-menu-section">Sesión</div>',unsafe_allow_html=True)
-    st.markdown(f"""
-    <div class="podex-session-card"><strong>{nombre_actual or usuario_actual}</strong><br>
-    Usuario: {usuario_actual}<br>Perfil: {perfil_actual or 'Sin perfil'}</div>
-    """,unsafe_allow_html=True)
     if st.button("🚪 Cerrar sesión",use_container_width=True):
         cerrar_sesion()
         for clave in ["auth_user_id","usuario_actual","perfil_actual","nombre_actual","email_actual"]:
@@ -391,7 +385,7 @@ TITULOS_PAGINA = {
 st.markdown(f"""
 <div class="podex-topbar"><div><div class="podex-top-title">{TITULOS_PAGINA.get(pagina_actual, 'Gestión de Solicitudes')}</div>
 <div class="podex-top-subtitle">Sistema Integrado de Gestión de Peticiones, Incidentes y Vulnerabilidades · PODEX</div></div>
-<div class="podex-user-pill">👤 {nombre_actual or usuario_actual} · {perfil_actual or 'Usuario'}</div></div>
+<div class="podex-user-pill">👤 {nombre_actual or usuario_actual} · Usuario: {usuario_actual} · Perfil: {perfil_actual or 'Sin perfil'}</div></div>
 """,unsafe_allow_html=True)
 
 st.markdown('<div style="height:8px"></div>',unsafe_allow_html=True)
