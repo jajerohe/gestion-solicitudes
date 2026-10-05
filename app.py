@@ -368,15 +368,6 @@ with st.sidebar:
         opciones_menu.append(("cargar", "📥  Cargar solicitudes"))
     mostrar_menu("podex_menu", opciones_menu)
 
-    st.markdown("""
-    <div class="podex-menu-item"><span class="podex-menu-icon">↻</span>Gestiones</div>
-    """,unsafe_allow_html=True)
-
-    if es_administrador:
-        st.markdown("""
-        <div class="podex-menu-item"><span class="podex-menu-icon">⇧</span>Carga de información</div>
-        """,unsafe_allow_html=True)
-
     st.markdown('<div class="podex-menu-section">Sesión</div>',unsafe_allow_html=True)
     st.markdown(f"""
     <div class="podex-session-card"><strong>{nombre_actual or usuario_actual}</strong><br>
