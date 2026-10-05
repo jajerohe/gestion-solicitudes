@@ -6,6 +6,7 @@ from zoneinfo import ZoneInfo
 from database import Database
 from excel_web import analizar_excel, cargar_excel, normalizar_product_owner
 from auth import iniciar_sesion, cerrar_sesion
+from usuarios import mostrar_modulo_usuarios
 
 st.set_page_config(
     page_title="PODEX - Sistema de Gestión POD's Extendidos",
@@ -312,12 +313,12 @@ section[data-testid="stSidebar"]>div{padding:.8rem .8rem 1rem!important}
 .podex-menu-item.active{color:#fff;background:linear-gradient(90deg,#0b5b4d,#147b66);box-shadow:0 3px 10px rgba(11,91,77,.16)}
 .podex-menu-icon{width:21px;height:21px;display:inline-flex;align-items:center;justify-content:center;border-radius:5px;background:#edf6f2;font-size:12px}
 .podex-menu-item.active .podex-menu-icon{background:rgba(255,255,255,.18)}
-.st-key-podex_menu div[data-testid="stButton"]>button{justify-content:flex-start!important;height:auto!important;min-height:38px!important;padding:9px!important;margin:0!important;border:none!important;border-radius:7px!important;background:transparent!important;color:#40514d!important;font-size:12px!important;font-weight:600!important;box-shadow:none!important}
-.st-key-podex_menu div[data-testid="stButton"]>button:hover{background:#edf6f2!important}
-.st-key-podex_menu div[data-testid="stButton"]>button[kind="primary"]{color:#fff!important;background:linear-gradient(90deg,#0b5b4d,#147b66)!important;box-shadow:0 3px 10px rgba(11,91,77,.16)!important}
-.st-key-podex_menu div[data-testid="stButton"]>button>div{justify-content:flex-start!important;width:100%!important}
-.st-key-podex_menu div[data-testid="stButton"]>button p{font-size:12px!important;font-weight:600!important;text-align:left!important}
-.st-key-podex_menu{gap:3px!important}
+.st-key-podex_menu div[data-testid="stButton"]>button,.st-key-podex_menu_admin div[data-testid="stButton"]>button{justify-content:flex-start!important;height:auto!important;min-height:38px!important;padding:9px!important;margin:0!important;border:none!important;border-radius:7px!important;background:transparent!important;color:#40514d!important;font-size:12px!important;font-weight:600!important;box-shadow:none!important}
+.st-key-podex_menu div[data-testid="stButton"]>button:hover,.st-key-podex_menu_admin div[data-testid="stButton"]>button:hover{background:#edf6f2!important}
+.st-key-podex_menu div[data-testid="stButton"]>button[kind="primary"],.st-key-podex_menu_admin div[data-testid="stButton"]>button[kind="primary"]{color:#fff!important;background:linear-gradient(90deg,#0b5b4d,#147b66)!important;box-shadow:0 3px 10px rgba(11,91,77,.16)!important}
+.st-key-podex_menu div[data-testid="stButton"]>button>div,.st-key-podex_menu_admin div[data-testid="stButton"]>button>div{justify-content:flex-start!important;width:100%!important}
+.st-key-podex_menu div[data-testid="stButton"]>button p,.st-key-podex_menu_admin div[data-testid="stButton"]>button p{font-size:12px!important;font-weight:600!important;text-align:left!important}
+.st-key-podex_menu,.st-key-podex_menu_admin{gap:3px!important}
 .podex-session-card{margin-top:14px;padding:10px;border:1px solid #e3e8e6;border-radius:9px;background:#f8faf9;font-size:10px;color:#5f6d69;line-height:1.65}
 .podex-session-card strong{color:var(--dark)}
 .podex-topbar{background:#fff;border:1px solid #9ec91f;border-radius:8px;min-height:64px;padding:9px 16px;display:flex;align-items:center;justify-content:space-between;box-shadow:inset 0 3px 0 var(--lime);margin-bottom:12px}
@@ -329,6 +330,7 @@ div[data-testid="stTextInput"] input,div[data-testid="stTextArea"] textarea,div[
 button[kind="primaryFormSubmit"]{background:var(--dark)!important;border-color:var(--dark)!important;color:#fff!important}button[kind="primaryFormSubmit"]:hover{background:#08493e!important;border-color:#08493e!important}button[kind="primary"]{background:var(--dark)!important;border-color:var(--dark)!important;border-radius:6px!important;font-weight:700!important}button[kind="primary"]:hover{background:#08493e!important;border-color:#08493e!important}
 [data-testid="stMetric"]{background:#fff;border:1px solid var(--border);border-radius:7px;padding:9px 11px}[data-testid="stMetricLabel"]{color:#70807a!important}[data-testid="stMetricValue"]{color:var(--dark)!important}
 div[data-testid="stAlert"]{border-radius:7px!important}
+span[data-baseweb="tag"],[data-testid="stMultiSelectTagsContainer"] span[data-tag]{background:var(--dark)!important}
 .tabla-header{color:#356158!important;font-size:10px!important;font-weight:800!important;text-transform:uppercase;letter-spacing:.2px;line-height:1.1!important;white-space:nowrap;padding:0!important}.tabla-cell{color:#40514d!important;font-size:10px!important;line-height:1.15!important;min-height:24px!important;padding:5px 3px!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-bottom:1px solid #edf0ef}div[data-testid="column"]{padding-top:0!important;padding-bottom:0!important}
 div[data-testid="stButton"]>button{border-radius:6px!important;min-height:27px!important;height:27px!important;padding:0 7px!important;font-size:11px!important;color:var(--dark)!important;border:1px solid #cfe0db!important;background:#f5f9f7!important}div[data-testid="stButton"]>button:hover{background:#e8f2ee!important;border-color:#9fc3b8!important}
 div[data-testid="stFormSubmitButton"]>button{border-radius:6px!important;min-height:32px!important;font-weight:700!important}hr{margin:8px 0!important;border-color:#e3e8e6!important}
@@ -343,22 +345,28 @@ with st.sidebar:
     st.markdown('<div class="podex-side-brand">',unsafe_allow_html=True)
     st.image("Logo_PODEX.png",width=175)
     st.markdown('<div class="podex-side-title">Sistema Integrado de Gestión</div></div>',unsafe_allow_html=True)
+    def mostrar_menu(clave_menu, opciones_menu):
+        with st.container(key=clave_menu):
+            for clave_pagina, etiqueta in opciones_menu:
+                if st.button(
+                    etiqueta,
+                    key=f"menu_{clave_pagina}",
+                    type="primary" if pagina_actual == clave_pagina else "secondary",
+                    use_container_width=True
+                ):
+                    st.session_state["pagina_actual"] = clave_pagina
+                    st.rerun()
+
+    if es_administrador:
+        st.markdown('<div class="podex-menu-section">Administración</div>',unsafe_allow_html=True)
+        mostrar_menu("podex_menu_admin", [("usuarios", "👥  Usuarios")])
+
     st.markdown('<div class="podex-menu-section">Operaciones</div>',unsafe_allow_html=True)
 
     opciones_menu = [("solicitudes", "▣  Solicitudes")]
     if es_administrador:
         opciones_menu.append(("cargar", "📥  Cargar solicitudes"))
-
-    with st.container(key="podex_menu"):
-        for clave_pagina, etiqueta in opciones_menu:
-            if st.button(
-                etiqueta,
-                key=f"menu_{clave_pagina}",
-                type="primary" if pagina_actual == clave_pagina else "secondary",
-                use_container_width=True
-            ):
-                st.session_state["pagina_actual"] = clave_pagina
-                st.rerun()
+    mostrar_menu("podex_menu", opciones_menu)
 
     st.markdown("""
     <div class="podex-menu-item"><span class="podex-menu-icon">↻</span>Gestiones</div>
@@ -383,13 +391,26 @@ with st.sidebar:
 # ============================================================
 # ENCABEZADO INTERNO
 # ============================================================
+TITULOS_PAGINA = {
+    "solicitudes": "Gestión de Solicitudes",
+    "cargar": "Cargar Solicitudes",
+    "usuarios": "Administración de Usuarios",
+}
+
 st.markdown(f"""
-<div class="podex-topbar"><div><div class="podex-top-title">{'Cargar Solicitudes' if pagina_actual == 'cargar' else 'Gestión de Solicitudes'}</div>
+<div class="podex-topbar"><div><div class="podex-top-title">{TITULOS_PAGINA.get(pagina_actual, 'Gestión de Solicitudes')}</div>
 <div class="podex-top-subtitle">Sistema Integrado de Gestión de Peticiones, Incidentes y Vulnerabilidades · PODEX</div></div>
 <div class="podex-user-pill">👤 {nombre_actual or usuario_actual} · {perfil_actual or 'Usuario'}</div></div>
 """,unsafe_allow_html=True)
 
 st.markdown('<div style="height:8px"></div>',unsafe_allow_html=True)
+
+# ============================================================
+# ADMINISTRACIÓN DE USUARIOS — SOLO ADMINISTRADOR
+# ============================================================
+if es_administrador and pagina_actual == "usuarios":
+    mostrar_modulo_usuarios(usuario_actual)
+    st.stop()
 
 # ============================================================
 # CARGA DE EXCEL — SOLO ADMINISTRADOR
