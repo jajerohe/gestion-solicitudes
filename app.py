@@ -623,8 +623,6 @@ except Exception as e:
     st.exception(e)
     st.stop()
 
-st.success(f"✅ Se han encontrado — {len(df)} solicitud(es) pendiente(s) de gestión")
-
 texto = st.text_input(
     "🔎 Buscar solicitud",
     placeholder="Digite ID, título, estado, asignado, Product Owner..."
@@ -638,9 +636,6 @@ if texto:
 else:
     df_filtrado = df
 
-
-
-st.subheader(f"Solicitudes ({len(df_filtrado)})")
 
 
 # ============================================================
@@ -1220,8 +1215,8 @@ hr {
 # TABLA PRINCIPAL
 # ============================================================
 anchos_tabla = [
-    1.0, 3.5, 1.5, 2.1, 1.8, 1.5,
-    1.0, 1.8, 2.5, 0.8, 0.9, 0.9
+    1.0, 3.5, 2.1, 1.8, 1.5,
+    0.8, 0.9, 0.9
 ]
 
 headers = st.columns(anchos_tabla)
@@ -1229,13 +1224,9 @@ headers = st.columns(anchos_tabla)
 titulos_tabla = [
     "Solicitud",
     "Titulo",
-    "Apertura",
     "Servicio",
     "Product Owner",
     "Estado",
-    "Registro",
-    "Nombre Asignatario",
-    "Correo Asignatario",
     "Gestionar",
     "Ver Gestión",
     "Actualizar"
@@ -1259,23 +1250,14 @@ for _, fila in df_filtrado.iterrows():
     valores = [
         fila["ID_SOLICITUD"],
         fila["TITULO"],
-        fila["FECHA_APERTURA"],
         fila["SUBSERVICIO_AFECTADO"],
         fila["PRODUCT_OWNER"],
-        fila["STATUS"],
-        fila["ASIGNADO_A"],
-        fila["NOMBRE_ASIGNATARIO"],
-        fila["CORREO_ASIGNATARIO"]
+        fila["STATUS"]
     ]
 
     for i, valor in enumerate(valores):
 
         with cols[i]:
-
-            if i == 2 and pd.notna(valor):
-                valor = pd.to_datetime(valor).strftime(
-                    "%Y-%m-%d %H:%M:%S"
-                )
 
             # Título y demás campos conservan el contenido,
             # pero se muestran compactos y sin aumentar la altura.
@@ -1287,7 +1269,7 @@ for _, fila in df_filtrado.iterrows():
             )
 
     # Botón para adicionar gestión
-    with cols[9]:
+    with cols[5]:
         if st.button(
             "✏️",
             key=f"gestion_{sid}",
@@ -1297,7 +1279,7 @@ for _, fila in df_filtrado.iterrows():
             ventana_gestion(sid)
 
     # Botón para ver las gestiones registradas
-    with cols[10]:
+    with cols[6]:
         if st.button(
             "🔍",
             key=f"ver_gestion_{sid}",
@@ -1307,7 +1289,7 @@ for _, fila in df_filtrado.iterrows():
             ventana_ver_gestion(sid)
 
     # Botón para actualizar solicitud
-    with cols[11]:
+    with cols[7]:
         if st.button(
             "📝",
             key=f"actualizar_{sid}",
