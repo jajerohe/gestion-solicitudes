@@ -309,11 +309,8 @@ section[data-testid="stSidebar"]>div{padding:.8rem .8rem 1rem!important}
 .podex-menu-item.active .podex-menu-icon{background:rgba(255,255,255,.18)}
 .podex-session-card{margin-top:14px;padding:10px;border:1px solid #e3e8e6;border-radius:9px;background:#f8faf9;font-size:10px;color:#5f6d69;line-height:1.65}
 .podex-session-card strong{color:var(--dark)}
-.podex-topbar{background:#fff;border:1px solid var(--border);border-radius:8px;min-height:64px;padding:9px 16px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 7px rgba(20,45,40,.04);margin-bottom:12px}
+.podex-topbar{background:#fff;border:1px solid #9ec91f;border-radius:8px;min-height:64px;padding:9px 16px;display:flex;align-items:center;justify-content:space-between;box-shadow:inset 0 3px 0 var(--lime);margin-bottom:12px}
 .podex-top-title{color:var(--dark);font-size:18px;font-weight:800}.podex-top-subtitle{color:#7b8582;font-size:10px;margin-top:2px}.podex-user-pill{background:#f1f6f4;border:1px solid #dce9e4;color:#28564d;border-radius:20px;padding:7px 12px;font-size:10px;font-weight:700}
-.podex-step-card{background:#fff;border:1px solid var(--border);border-radius:8px;min-height:66px;padding:10px 13px;box-shadow:0 2px 7px rgba(20,45,40,.035)}
-.podex-step-card.active{border-color:#9ec91f;box-shadow:inset 0 3px 0 var(--lime)}
-.podex-step-number{color:#7b8582;font-size:9px;font-weight:800;text-transform:uppercase}.podex-step-name{color:#1b4038;font-size:12px;font-weight:800;margin-top:3px}.podex-step-state{color:#73807c;font-size:9px;margin-top:3px}
 .podex-section-title{color:#16473e;font-size:15px;font-weight:800;margin:2px 0 5px}.podex-section-caption{color:#7b8582;font-size:10px;margin-bottom:8px}
 div[data-testid="stVerticalBlockBorderWrapper"]{border-color:var(--border)!important;border-radius:8px!important;background:#fff!important}
 div[data-testid="stFileUploader"]{background:#f7f9f8!important;border:1px dashed #b9c9c4!important;border-radius:7px!important}
@@ -366,10 +363,6 @@ st.markdown(f"""
 <div class="podex-user-pill">👤 {nombre_actual or usuario_actual} · {perfil_actual or 'Usuario'}</div></div>
 """,unsafe_allow_html=True)
 
-step1,step2,step3=st.columns([1,1,1],gap="small")
-with step1: st.markdown('<div class="podex-step-card active"><div class="podex-step-number">PASO 1</div><div class="podex-step-name">Consultar solicitudes</div><div class="podex-step-state">Gestión y seguimiento</div></div>',unsafe_allow_html=True)
-with step2: st.markdown('<div class="podex-step-card"><div class="podex-step-number">PASO 2</div><div class="podex-step-name">Registrar gestión</div><div class="podex-step-state">Observaciones y trazabilidad</div></div>',unsafe_allow_html=True)
-with step3: st.markdown('<div class="podex-step-card"><div class="podex-step-number">PASO 3</div><div class="podex-step-name">Actualizar solicitud</div><div class="podex-step-state">Cierre y estado</div></div>',unsafe_allow_html=True)
 st.markdown('<div style="height:8px"></div>',unsafe_allow_html=True)
 
 # ============================================================
@@ -387,7 +380,6 @@ if es_administrador:
             help="Se procesarán únicamente DETALLE_GENERAL y DETALLE_FUNCIONALES."
         )
 
-st.caption(f"👤 Sesión activa: {nombre_actual or usuario_actual} · Usuario: {usuario_actual}")
 
 
 def obtener_solicitudes(usuario, administrador=False):
