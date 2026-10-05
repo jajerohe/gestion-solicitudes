@@ -1331,17 +1331,6 @@ div[data-testid="column"] {
     padding-bottom: 0 !important;
 }
 
-/* Botones + de gestión y actualización */
-div[data-testid="stButton"] > button {
-    min-height: 24px !important;
-    height: 24px !important;
-    padding: 0 4px !important;
-    margin: 0 !important;
-    font-size: 11px !important;
-    line-height: 1 !important;
-    border-radius: 50% !important;
-}
-
 /* Botones de los formularios: misma forma que "Guardar Gestión" */
 div[data-testid="stFormSubmitButton"] > button,
 div[data-testid="stFormSubmitButton"] button {
@@ -1366,93 +1355,67 @@ hr {
 
 # ============================================================
 # TABLA PRINCIPAL
+# Misma cuadrícula que la vista previa de "Cargar solicitudes":
+# se selecciona una fila y se gestiona con los botones superiores.
 # ============================================================
-anchos_tabla = [
-    1.0, 3.5, 2.1, 1.8, 1.5,
-    0.8, 0.9, 0.9
-]
-
-headers = st.columns(anchos_tabla)
-
-titulos_tabla = [
-    "Solicitud",
-    "Titulo",
-    "Servicio",
-    "Product Owner",
-    "Estado",
-    "Gestionar",
-    "Ver Gestión",
-    "Actualizar"
-]
-
-for col, title in zip(headers, titulos_tabla):
-    with col:
-        st.markdown(
-            f'<div class="tabla-header">{title}</div>',
-            unsafe_allow_html=True
-        )
-
-st.divider()
-
-for _, fila in df_filtrado.iterrows():
-
-    sid = fila["ID_SOLICITUD"]
-
-    cols = st.columns(anchos_tabla)
-
-    valores = [
-        fila["ID_SOLICITUD"],
-        fila["TITULO"],
-        fila["SUBSERVICIO_AFECTADO"],
-        fila["PRODUCT_OWNER"],
-        fila["STATUS"]
-    ]
-
-    for i, valor in enumerate(valores):
-
-        with cols[i]:
-
-            # Título y demás campos conservan el contenido,
-            # pero se muestran compactos y sin aumentar la altura.
-            valor = "" if pd.isna(valor) else str(valor)
-
-            st.markdown(
-                f'<div class="tabla-cell" title="{valor}">{valor}</div>',
-                unsafe_allow_html=True
-            )
-
-    # Botón para adicionar gestión
-    with cols[5]:
-        if st.button(
-            "✏️",
-            key=f"gestion_{sid}",
-            help=f"Adicionar gestión a {sid}",
-            use_container_width=True
-        ):
-            ventana_gestion(sid)
-
-    # Botón para ver las gestiones registradas
-    with cols[6]:
-        if st.button(
-            "🔍",
-            key=f"ver_gestion_{sid}",
-            help=f"Ver gestión de {sid}",
-            use_container_width=True
-        ):
-            ventana_ver_gestion(sid)
-
-    # Botón para actualizar solicitud
-    with cols[7]:
-        if st.button(
-            "📝",
-            key=f"actualizar_{sid}",
-            help=f"Actualizar solicitud {sid}",
-            use_container_width=True
-        ):
-            ventana_actualizar(sid)
-
-
 if df_filtrado.empty:
     st.info(
         "ℹ️ No existen solicitudes que coincidan con el criterio de búsqueda."
     )
+    st.stop()
+
+tabla_solicitudes = df_filtrado[[
+    "ID_SOLICITUD", "TITULO", "SUBSERVICIO_AFECTADO", "PRODUCT_OWNER", "STATUS"
+]].reset_index(drop=True)
+
+c_sel, c_gestion, c_ver, c_actualizar = st.columns(
+    [4, 1, 1, 1], vertical_alignment="center"
+)
+
+seleccion = st.session_state.get("tabla_solicitudes")
+filas = seleccion.selection.rows if seleccion else []
+sid = (
+    tabla_solicitudes.iloc[filas[0]]["ID_SOLICITUD"]
+    if filas and filas[0] < len(tabla_solicitudes)
+    else None
+)
+
+with c_sel:
+    if sid:
+        st.markdown(f"**Solicitud seleccionada:** {sid}")
+    else:
+        st.caption("☝️ Seleccione una solicitud en la tabla para gestionarla.")
+
+with c_gestion:
+    if st.button("✏️ Gestionar", use_container_width=True, disabled=not sid,
+                 help="Adicionar gestión a la solicitud seleccionada"):
+        ventana_gestion(sid)
+
+with c_ver:
+    if st.button("🔍 Ver gestión", use_container_width=True, disabled=not sid,
+                 help="Ver las gestiones de la solicitud seleccionada"):
+        ventana_ver_gestion(sid)
+
+with c_actualizar:
+    if st.button("📝 Actualizar", use_container_width=True, disabled=not sid,
+                 help="Actualizar la solicitud seleccionada"):
+        ventana_actualizar(sid)
+
+st.markdown('<div style="height:14px"></div>', unsafe_allow_html=True)
+
+st.dataframe(
+    tabla_solicitudes,
+    key="tabla_solicitudes",
+    on_select="rerun",
+    selection_mode="single-row",
+    hide_index=True,
+    use_container_width=True,
+    height=min(38 + 35 * len(tabla_solicitudes), 640),
+    column_config={
+        "ID_SOLICITUD": st.column_config.TextColumn("ID_SOLICITUD", width="small"),
+        "TITULO": st.column_config.TextColumn("TITULO", width="large"),
+        "SUBSERVICIO_AFECTADO": st.column_config.TextColumn("SUBSERVICIO_AFECTADO", width="medium"),
+        "PRODUCT_OWNER": st.column_config.TextColumn("PRODUCT_OWNER", width="medium"),
+        "STATUS": st.column_config.TextColumn("STATUS", width="small"),
+    },
+)
