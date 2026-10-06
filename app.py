@@ -832,13 +832,13 @@ def ventana_gestion(id_solicitud):
             )
 
         with c_hora:
-            hora_gestion_texto = st.text_input(
+            # step=1 muestra horas, minutos y segundos (HH:MM:SS).
+            hora_gestion_valor = st.time_input(
                 "Hora de gestión",
-                value="",
-                max_chars=8,
+                value=None,
+                step=1,
                 key=f"hora_gestion_{id_solicitud}",
-                placeholder="HH:MM:SS",
-                help="Digite la hora exactamente en formato HH:MM:SS. Ejemplo: 15:30:42"
+                help="Seleccione o digite la hora de la gestión (HH:MM:SS)."
             )
 
         observacion = st.text_area(
@@ -859,16 +859,12 @@ def ventana_gestion(id_solicitud):
             st.warning("⚠️ Debe ingresar una observación.")
             return
 
-        # Guardar EXACTAMENTE la fecha y hora digitadas por el usuario.
-        hora_gestion_texto = hora_gestion_texto.strip()
-
-        try:
-            hora_gestion = datetime.strptime(
-                hora_gestion_texto, "%H:%M:%S"
-            ).strftime("%H:%M:%S")
-        except ValueError:
-            st.error("❌ La hora de gestión debe tener el formato HH:MM:SS. Ejemplo: 15:30:42")
+        # Guardar EXACTAMENTE la fecha y hora seleccionadas por el usuario.
+        if hora_gestion_valor is None:
+            st.error("❌ Debe seleccionar la hora de gestión.")
             return
+
+        hora_gestion = hora_gestion_valor.strftime("%H:%M:%S")
 
         fecha_db = f"{fecha_seleccionada:%Y-%m-%d} {hora_gestion}"
 
@@ -1079,7 +1075,7 @@ def ventana_actualizar(id_solicitud):
 
         if not codigo_seleccionado:
             fecha_default = None
-            hora_default = ""
+            hora_default = None
         else:
             fecha_default = (
                 fecha_inicial.date()
@@ -1087,9 +1083,9 @@ def ventana_actualizar(id_solicitud):
                 else pd.Timestamp.now().date()
             )
             hora_default = (
-                fecha_inicial.strftime("%H:%M:%S")
+                fecha_inicial.time()
                 if pd.notna(fecha_actual)
-                else ""
+                else None
             )
 
         with st.form(f"form_actualizar_popup_{id_solicitud}"):
@@ -1106,12 +1102,12 @@ def ventana_actualizar(id_solicitud):
                 )
 
             with c_hora:
-                hora_cierre_texto = st.text_input(
+                # step=1 muestra horas, minutos y segundos (HH:MM:SS).
+                hora_cierre_valor = st.time_input(
                     "Hora de cierre",
                     value=hora_default,
-                    max_chars=8,
-                    placeholder="HH:MM:SS",
-                    help="Digite la hora exactamente en formato HH:MM:SS. Ejemplo: 18:12:34",
+                    step=1,
+                    help="Seleccione o digite la hora de cierre (HH:MM:SS).",
                     disabled=not codigo_seleccionado,
                     key=f"hora_cierre_{id_solicitud}"
                 )
@@ -1127,26 +1123,15 @@ def ventana_actualizar(id_solicitud):
             fecha_cierre_db = None
         else:
             # Si hay código de cierre, fecha y hora son obligatorias.
-            hora_cierre_texto = hora_cierre_texto.strip()
-
             if fecha_cierre_fecha is None:
                 st.error("❌ Debe seleccionar la fecha de cierre.")
                 return
 
-            if not hora_cierre_texto:
-                st.error("❌ Debe ingresar la hora de cierre.")
+            if hora_cierre_valor is None:
+                st.error("❌ Debe seleccionar la hora de cierre.")
                 return
 
-            try:
-                hora_cierre = datetime.strptime(
-                    hora_cierre_texto, "%H:%M:%S"
-                ).strftime("%H:%M:%S")
-            except ValueError:
-                st.error(
-                    "❌ La hora de cierre debe tener el formato HH:MM:SS. "
-                    "Ejemplo: 18:12:34"
-                )
-                return
+            hora_cierre = hora_cierre_valor.strftime("%H:%M:%S")
 
             fecha_cierre_db = (
                 f"{fecha_cierre_fecha:%Y-%m-%d} {hora_cierre}"
