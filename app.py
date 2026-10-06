@@ -806,7 +806,6 @@ def ventana_gestion(id_solicitud):
     ].iloc[0]
 
     # Información de la solicitud
-    st.markdown("### 📄 Información de la solicitud")
 
     a, b, c = st.columns(3)
 
@@ -961,7 +960,6 @@ def ventana_ver_gestion(id_solicitud):
     # ========================================================
     # INFORMACIÓN DE LA SOLICITUD
     # ========================================================
-    st.markdown("### 📄 Información de la solicitud")
 
     a, b, c = st.columns(3)
 
@@ -1061,7 +1059,6 @@ def ventana_actualizar(id_solicitud):
         df_filtrado["ID_SOLICITUD"] == id_solicitud
     ].iloc[0]
 
-    st.markdown("### 📄 Información de la solicitud")
 
     a, b, c = st.columns(3)
 
