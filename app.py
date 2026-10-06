@@ -7,6 +7,7 @@ from database import Database
 from excel_web import analizar_excel, cargar_excel, normalizar_product_owner
 from auth import iniciar_sesion, cerrar_sesion
 from usuarios import mostrar_modulo_usuarios, encabezado_ventana, ficha, seccion
+from pods import mostrar_modulo_pods
 
 st.set_page_config(
     page_title="PODEX - Sistema de Gestión POD's Extendidos",
@@ -347,11 +348,11 @@ div[role="dialog"] div[data-testid="stForm"]{border-color:var(--border)!importan
 [class*="st-key-acciones_"] div[data-testid="stButton"] button:hover,[class*="st-key-acciones_"] div[data-testid="stFormSubmitButton"] button:hover{transform:scale(1.08);box-shadow:0 3px 10px rgba(20,60,90,.35)!important}
 [class*="st-key-acciones_"] div[data-testid="stButton"] button:disabled,[class*="st-key-acciones_"] div[data-testid="stFormSubmitButton"] button:disabled{opacity:.35;transform:none;box-shadow:none!important}
 [class*="st-key-acciones_"] div[data-testid="stButton"] button span,[class*="st-key-acciones_"] div[data-testid="stFormSubmitButton"] button span{color:#fff!important;font-size:20px!important;margin:0!important}
-.st-key-btn_gestionar div[data-testid="stButton"] button,.st-key-btn_usr_nuevo div[data-testid="stButton"] button,.st-key-btn_cargar div[data-testid="stButton"] button{background:linear-gradient(160deg,#CCD32A,#004236)!important}
-.st-key-btn_ver_gestion div[data-testid="stButton"] button,.st-key-btn_usr_editar div[data-testid="stButton"] button{background:linear-gradient(160deg,#2f6db5,#00214D)!important}
+.st-key-btn_gestionar div[data-testid="stButton"] button,.st-key-btn_usr_nuevo div[data-testid="stButton"] button,.st-key-btn_cargar div[data-testid="stButton"] button,.st-key-btn_pod_nuevo div[data-testid="stButton"] button{background:linear-gradient(160deg,#CCD32A,#004236)!important}
+.st-key-btn_ver_gestion div[data-testid="stButton"] button,.st-key-btn_usr_editar div[data-testid="stButton"] button,.st-key-btn_pod_editar div[data-testid="stButton"] button{background:linear-gradient(160deg,#2f6db5,#00214D)!important}
 .st-key-btn_actualizar div[data-testid="stButton"] button,.st-key-btn_usr_estado div[data-testid="stButton"] button{background:linear-gradient(160deg,#F7DB17,#FF5F00)!important}
 .st-key-btn_usr_clave div[data-testid="stButton"] button{background:linear-gradient(160deg,#C3C5C6,#403833)!important}
-.st-key-btn_usr_eliminar div[data-testid="stButton"] button{background:linear-gradient(160deg,#FF5F00,#8a2c00)!important}
+.st-key-btn_usr_eliminar div[data-testid="stButton"] button,.st-key-btn_pod_eliminar div[data-testid="stButton"] button{background:linear-gradient(160deg,#FF5F00,#8a2c00)!important}
 [class*="st-key-btn_ok_"] div[data-testid="stFormSubmitButton"] button{background:linear-gradient(160deg,#CCD32A,#004236)!important}
 [class*="st-key-btn_info_"] div[data-testid="stFormSubmitButton"] button{background:linear-gradient(160deg,#2f6db5,#00214D)!important}
 [class*="st-key-btn_warn_"] div[data-testid="stFormSubmitButton"] button{background:linear-gradient(160deg,#F7DB17,#FF5F00)!important}
@@ -385,7 +386,7 @@ with st.sidebar:
 
     if es_administrador:
         st.markdown('<div class="podex-menu-section">Administración</div>',unsafe_allow_html=True)
-        mostrar_menu("podex_menu_admin", [("usuarios", "👥  Usuarios")])
+        mostrar_menu("podex_menu_admin", [("usuarios", "👥  Usuarios"), ("pods", "🧩  POD's")])
 
     st.markdown('<div class="podex-menu-section">Operaciones</div>',unsafe_allow_html=True)
 
@@ -402,6 +403,7 @@ TITULOS_PAGINA = {
     "solicitudes": "Gestión de Solicitudes",
     "cargar": "Cargar Solicitudes",
     "usuarios": "Administración de Usuarios",
+    "pods": "Administración de POD's",
 }
 
 st.markdown(f"""
@@ -416,6 +418,10 @@ st.markdown('<div style="height:8px"></div>',unsafe_allow_html=True)
 # ============================================================
 # ADMINISTRACIÓN DE USUARIOS — SOLO ADMINISTRADOR
 # ============================================================
+if es_administrador and pagina_actual == "pods":
+    mostrar_modulo_pods()
+    st.stop()
+
 if es_administrador and pagina_actual == "usuarios":
     mostrar_modulo_usuarios(usuario_actual)
     st.stop()
