@@ -9,8 +9,10 @@ from database import Database
 from excel_web import analizar_excel, cargar_excel, leer_hojas, normalizar_product_owner
 from auth import iniciar_sesion, cerrar_sesion
 from usuarios import (
-    mostrar_modulo_usuarios, encabezado_ventana, ficha, seccion, obtener_pods
+    mostrar_modulo_usuarios, encabezado_ventana, ficha, seccion, obtener_pods,
+    obtener_usuarios, obtener_cliente_admin
 )
+from correo import configuracion_correo, enviar_resumen_carga
 from pods import mostrar_modulo_pods
 
 # Tiempo máximo (segundos) que se reutilizan los datos consultados entre
@@ -576,7 +578,54 @@ def leer_hojas_cacheadas(contenido, product_owners):
     return leer_hojas(io.BytesIO(contenido), product_owners)
 
 
-def ejecutar_carga(archivo, hojas):
+def resumen_carga(archivo, hojas, resultado):
+    """Resumen de la carga para el correo a los usuarios activos."""
+    conteo = {}
+    for _, df in hojas:
+        for po, cantidad in df["PRODUCT_OWNER"].value_counts().items():
+            conteo[po] = conteo.get(po, 0) + int(cantidad)
+
+    pods = obtener_pods()
+    id_por_nombre = {normalizar_product_owner(n): i for i, n in zip(pods["ID_POD"], pods["NOMBRE"])}
+    por_pod = sorted(
+        ((id_por_nombre.get(po, "—"), po, c) for po, c in conteo.items()),
+        key=lambda x: str(x[0])
+    )
+    por_hoja = {hoja: len(df) for hoja, df in hojas}
+
+    return {
+        "archivo": archivo.name,
+        "fecha": datetime.now(ZoneInfo("America/Bogota")).strftime("%Y-%m-%d %H:%M:%S"),
+        "usuario_carga": nombre_actual or usuario_actual,
+        "total": sum(por_hoja.values()),
+        "generales_hoja": por_hoja.get("DETALLE_GENERAL", 0),
+        "funcionales_hoja": por_hoja.get("DETALLE_FUNCIONALES", 0),
+        "procesadas": int(resultado.get("generales", 0)) + int(resultado.get("funcionales", 0)),
+        "sin_cambios": int(resultado.get("duplicados", 0)),
+        "por_pod": por_pod,
+    }
+
+
+def notificar_carga(resumen):
+    """Envía un solo correo con el resumen general de la carga a todos los
+    usuarios activos. Devuelve (tipo, mensaje) para mostrar después."""
+    try:
+        usuarios = obtener_usuarios()
+        correos = usuarios.loc[
+            (usuarios["ACTIVO"] == True) & usuarios["CORREO"].notna(), "CORREO"  # noqa: E712
+        ].tolist()
+        if not correos:
+            return "warning", "⚠️ No hay usuarios activos con correo para notificar la carga."
+
+        with st.spinner("Enviando el resumen de la carga por correo..."):
+            enviados = enviar_resumen_carga(correos, resumen)
+    except Exception as e:
+        return "warning", f"⚠️ La carga se guardó, pero no fue posible enviar el resumen por correo: {e}"
+
+    return "info", f"📧 Resumen de la carga enviado en un solo correo a {enviados} usuario(s) activo(s)."
+
+
+def ejecutar_carga(archivo, hojas, notificar=False):
     """Carga las solicitudes del archivo y registra la auditoría."""
     db = Database()
 
@@ -626,6 +675,13 @@ def ejecutar_carga(archivo, hojas):
             "duplicados": duplicados,
             "errores": errores,
         }
+
+        # El correo es informativo: si falla, la carga ya quedó guardada.
+        if notificar:
+            st.session_state["resultado_carga"]["correo"] = notificar_carga(
+                resumen_carga(archivo, hojas, resultado)
+            )
+
         # Limpia el archivo seleccionado para evitar cargarlo dos veces.
         st.session_state["uploader_version"] = st.session_state.get("uploader_version", 0) + 1
         return True
@@ -661,6 +717,17 @@ def ventana_confirmar_carga(archivo, preview, hojas):
     seccion("¿Está seguro que desea cargar estas solicitudes?")
 
     with st.form("form_confirmar_carga"):
+        puede_notificar = configuracion_correo() is not None and obtener_cliente_admin() is not None
+        notificar = st.checkbox(
+            "Enviar resumen por correo a los usuarios activos",
+            value=puede_notificar,
+            disabled=not puede_notificar,
+            help=(
+                "Se envía un solo correo con el resumen general de la carga a todos los usuarios activos."
+                if puede_notificar else
+                "Requiere la sección [email] y supabase.service_role_key en los secretos."
+            )
+        )
         with st.container(key="acciones_dlg_carga", horizontal=True,
                           horizontal_alignment="right", gap="small"):
             cancelar = st.form_submit_button("", icon=":material/close:", key="btn_cancel_carga", help="Cancelar")
@@ -669,7 +736,7 @@ def ventana_confirmar_carga(archivo, preview, hojas):
     if cancelar:
         st.rerun()
 
-    if confirmar and ejecutar_carga(archivo, hojas):
+    if confirmar and ejecutar_carga(archivo, hojas, notificar):
         st.rerun()
 
 
@@ -686,6 +753,10 @@ if es_administrador and pagina_actual == "cargar":
         b.metric("Funcionales", resultado_carga["funcionales"])
         c.metric("Duplicados", resultado_carga["duplicados"])
         d.metric("Errores", resultado_carga["errores"])
+
+        if resultado_carga.get("correo"):
+            tipo, mensaje = resultado_carga["correo"]
+            (st.warning if tipo == "warning" else st.info)(mensaje)
 
 if es_administrador and archivo_excel is not None:
     try:
