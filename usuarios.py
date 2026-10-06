@@ -55,6 +55,7 @@ def cliente_admin_requerido() -> Client:
 # ============================================================
 # CONSULTAS
 # ============================================================
+@st.cache_data(ttl=60, show_spinner=False)
 def obtener_perfiles():
     db = Database()
     try:
@@ -65,6 +66,7 @@ def obtener_perfiles():
         db.cerrar()
 
 
+@st.cache_data(ttl=60, show_spinner=False)
 def obtener_descripcion_perfil(perfil):
     """Descripción del perfil en la tabla PERFILES (None si no tiene)."""
     db = Database()
@@ -79,6 +81,7 @@ def obtener_descripcion_perfil(perfil):
         db.cerrar()
 
 
+@st.cache_data(ttl=60, show_spinner=False)
 def obtener_pods():
     db = Database()
     try:
@@ -89,6 +92,7 @@ def obtener_pods():
         db.cerrar()
 
 
+@st.cache_data(ttl=60, show_spinner=False)
 def obtener_usuarios():
     """Usuarios de PODEX con sus PODs, completados con correo y estado de Supabase Auth."""
     db = Database()
@@ -223,7 +227,9 @@ def guardar_pods(db, usuario, pods):
 
 
 def notificar(mensaje, tipo="success"):
-    """Guarda un mensaje para mostrarlo después del st.rerun()."""
+    """Guarda un mensaje para mostrarlo después del st.rerun() y descarta los
+    datos en caché para que la tabla refleje el cambio."""
+    st.cache_data.clear()
     st.session_state["mensaje_usuarios"] = (tipo, mensaje)
     st.rerun()
 
@@ -699,7 +705,7 @@ def mostrar_modulo_usuarios(usuario_actual):
         on_select="rerun",
         selection_mode="single-row",
         hide_index=True,
-        use_container_width=True,
+        width="stretch",
         height=min(38 + 35 * len(tabla), 640),
         column_config={
             "USUARIO": st.column_config.TextColumn("USUARIO", width="small"),

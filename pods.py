@@ -22,6 +22,7 @@ PATRON_ID_POD = re.compile(r"^[A-Z0-9_-]{1,10}$")
 # ============================================================
 # CONSULTAS
 # ============================================================
+@st.cache_data(ttl=60, show_spinner=False)
 def obtener_pods_detalle():
     """PODs con el número de solicitudes abiertas de cada uno."""
     db = Database()
@@ -54,7 +55,9 @@ def siguiente_id_pod(ids):
 
 
 def notificar(mensaje, tipo="success"):
-    """Guarda un mensaje para mostrarlo después del st.rerun()."""
+    """Guarda un mensaje para mostrarlo después del st.rerun() y descarta los
+    datos en caché (los PODs afectan la carga y las solicitudes visibles)."""
+    st.cache_data.clear()
     st.session_state["mensaje_pods"] = (tipo, mensaje)
     st.rerun()
 
@@ -304,7 +307,7 @@ def mostrar_modulo_pods():
         on_select="rerun",
         selection_mode="single-row",
         hide_index=True,
-        use_container_width=True,
+        width="stretch",
         height=min(38 + 35 * len(tabla), 640),
         column_config={
             "ID_POD": st.column_config.TextColumn("ID_POD", width="small"),

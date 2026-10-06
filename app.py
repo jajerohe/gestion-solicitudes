@@ -1,13 +1,21 @@
-import streamlit as st
-import pandas as pd
+import io
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
+import pandas as pd
+import streamlit as st
+
 from database import Database
-from excel_web import analizar_excel, cargar_excel, normalizar_product_owner
+from excel_web import analizar_excel, cargar_excel, leer_hojas, normalizar_product_owner
 from auth import iniciar_sesion, cerrar_sesion
-from usuarios import mostrar_modulo_usuarios, encabezado_ventana, ficha, seccion
+from usuarios import (
+    mostrar_modulo_usuarios, encabezado_ventana, ficha, seccion, obtener_pods
+)
 from pods import mostrar_modulo_pods
+
+# Tiempo máximo (segundos) que se reutilizan los datos consultados entre
+# interacciones. Cualquier cambio guardado limpia la caché de inmediato.
+TTL_CACHE = 60
 
 st.set_page_config(
     page_title="PODEX - Sistema de Gestión POD's Extendidos",
@@ -190,7 +198,7 @@ def mostrar_login():
 
     with marca:
         st.markdown('<div class="podex-marca"></div>', unsafe_allow_html=True)
-        st.image("Logo_PODEX.png", use_container_width=True)
+        st.image("Logo_PODEX.png", width="stretch")
 
     with acceso:
         st.markdown(
@@ -218,7 +226,7 @@ def mostrar_login():
                 ingresar = st.form_submit_button(
                     "Ingresar",
                     type="primary",
-                    use_container_width=True
+                    width="stretch"
                 )
 
         st.markdown(
@@ -295,15 +303,14 @@ nombre_actual = st.session_state.get("nombre_actual", "")
 # Perfil Operador: acceso restringido a las solicitudes de sus POD asignados.
 es_administrador = str(perfil_actual or "").strip().lower() == "administrador"
 
-# Página activa del menú lateral: "solicitudes" o "cargar" (solo administrador).
+# Página activa del menú lateral: "solicitudes", o "cargar", "usuarios" y
+# "pods" (solo administrador).
 if "pagina_actual" not in st.session_state or not es_administrador:
     st.session_state["pagina_actual"] = "solicitudes"
 pagina_actual = st.session_state["pagina_actual"]
 
 # ============================================================
 # ESTILO GENERAL DE LA APLICACIÓN
-# Diseño interno inspirado en Supervisor Operativo:
-# sidebar claro, verde institucional, tarjetas y flujo por pasos.
 # ============================================================
 st.markdown("""
 <style>
@@ -317,10 +324,6 @@ section[data-testid="stSidebar"]>div{padding:.8rem .8rem 1rem!important}
 .podex-side-brand{padding:4px 7px 13px;border-bottom:1px solid #edf0f1;margin-bottom:10px}
 .podex-side-title{color:var(--dark);font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;margin-top:3px}
 .podex-menu-section{color:#7b8582;font-size:10px;font-weight:800;text-transform:uppercase;margin:16px 7px 6px;letter-spacing:.6px}
-.podex-menu-item{display:flex;align-items:center;gap:9px;padding:9px;margin:3px 0;border-radius:7px;color:#40514d;font-size:12px;font-weight:600}
-.podex-menu-item.active{color:#fff;background:linear-gradient(90deg,#0b5b4d,#147b66);box-shadow:0 3px 10px rgba(11,91,77,.16)}
-.podex-menu-icon{width:21px;height:21px;display:inline-flex;align-items:center;justify-content:center;border-radius:5px;background:#edf6f2;font-size:12px}
-.podex-menu-item.active .podex-menu-icon{background:rgba(255,255,255,.18)}
 .st-key-podex_menu div[data-testid="stButton"]>button,.st-key-podex_menu_admin div[data-testid="stButton"]>button{justify-content:flex-start!important;height:auto!important;min-height:38px!important;padding:9px!important;margin:0!important;border:none!important;border-radius:7px!important;background:transparent!important;color:#40514d!important;font-size:12px!important;font-weight:600!important;box-shadow:none!important}
 .st-key-podex_menu div[data-testid="stButton"]>button:hover,.st-key-podex_menu_admin div[data-testid="stButton"]>button:hover{background:#edf6f2!important}
 .st-key-podex_menu div[data-testid="stButton"]>button[kind="primary"],.st-key-podex_menu_admin div[data-testid="stButton"]>button[kind="primary"]{color:#fff!important;background:linear-gradient(90deg,#0b5b4d,#147b66)!important;box-shadow:0 3px 10px rgba(11,91,77,.16)!important}
@@ -358,7 +361,6 @@ div[role="dialog"] div[data-testid="stForm"]{border-color:var(--border)!importan
 [class*="st-key-btn_warn_"] div[data-testid="stFormSubmitButton"] button{background:linear-gradient(160deg,#F7DB17,#FF5F00)!important}
 [class*="st-key-btn_neutral_"] div[data-testid="stFormSubmitButton"] button,[class*="st-key-btn_cancel_"] div[data-testid="stFormSubmitButton"] button{background:linear-gradient(160deg,#C3C5C6,#403833)!important}
 [class*="st-key-btn_danger_"] div[data-testid="stFormSubmitButton"] button{background:linear-gradient(160deg,#FF5F00,#8a2c00)!important}
-.tabla-header{color:#356158!important;font-size:10px!important;font-weight:800!important;text-transform:uppercase;letter-spacing:.2px;line-height:1.1!important;white-space:nowrap;padding:0!important}.tabla-cell{color:#40514d!important;font-size:10px!important;line-height:1.15!important;min-height:24px!important;padding:5px 3px!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-bottom:1px solid #edf0ef}div[data-testid="column"]{padding-top:0!important;padding-bottom:0!important}
 div[data-testid="stButton"]>button{border-radius:6px!important;min-height:27px!important;height:27px!important;padding:0 7px!important;font-size:11px!important;color:var(--dark)!important;border:1px solid #cfe0db!important;background:#f5f9f7!important}div[data-testid="stButton"]>button:hover{background:#e8f2ee!important;border-color:#9fc3b8!important}
 div[data-testid="stFormSubmitButton"]>button{border-radius:6px!important;min-height:32px!important;font-weight:700!important}hr{margin:8px 0!important;border-color:#e3e8e6!important}
 @media(max-width:900px){.block-container{padding:.7rem .75rem 1.5rem!important}section[data-testid="stSidebar"]{min-width:200px!important;width:200px!important}.podex-topbar{min-height:58px}}
@@ -379,7 +381,7 @@ with st.sidebar:
                     etiqueta,
                     key=f"menu_{clave_pagina}",
                     type="primary" if pagina_actual == clave_pagina else "secondary",
-                    use_container_width=True
+                    width="stretch"
                 ):
                     st.session_state["pagina_actual"] = clave_pagina
                     st.rerun()
@@ -416,7 +418,7 @@ st.markdown(f"""
 st.markdown('<div style="height:8px"></div>',unsafe_allow_html=True)
 
 # ============================================================
-# ADMINISTRACIÓN DE USUARIOS — SOLO ADMINISTRADOR
+# ADMINISTRACIÓN DE POD'S Y USUARIOS — SOLO ADMINISTRADOR
 # ============================================================
 if es_administrador and pagina_actual == "pods":
     mostrar_modulo_pods()
@@ -443,7 +445,7 @@ if es_administrador and pagina_actual == "cargar":
         )
 
 
-
+@st.cache_data(ttl=TTL_CACHE, show_spinner=False)
 def obtener_solicitudes(usuario, administrador=False):
     """
     Consulta las solicitudes según el perfil:
@@ -476,7 +478,7 @@ def obtener_solicitudes(usuario, administrador=False):
             db.execute(sql)
         else:
             sql = '''
-                SELECT DISTINCT
+                SELECT
                     s."ID_SOLICITUD",
                     s."TITULO",
                     s."FECHA_APERTURA",
@@ -489,16 +491,15 @@ def obtener_solicitudes(usuario, administrador=False):
                     s."FECHA_CIERRE",
                     s."CODIGO_CIERRE"
                 FROM public."SOLICITUDES" s
-                INNER JOIN public."PODS" p
-                    ON UPPER(TRIM(s."PRODUCT_OWNER"))
-                     = UPPER(TRIM(p."NOMBRE"))
-                INNER JOIN public."USUARIOS_PODS" up
-                    ON up."ID_POD" = p."ID_POD"
-                INNER JOIN public."USUARIOS" u
-                    ON u."USUARIO" = up."USUARIO"
-                WHERE u."USUARIO" = %s
-                  AND s."CODIGO_CIERRE" IS NULL
+                WHERE s."CODIGO_CIERRE" IS NULL
                   AND s."FECHA_CIERRE" IS NULL
+                  AND EXISTS (
+                      SELECT 1
+                      FROM public."PODS" p
+                      JOIN public."USUARIOS_PODS" up ON up."ID_POD" = p."ID_POD"
+                      WHERE up."USUARIO" = %s
+                        AND UPPER(TRIM(p."NOMBRE")) = UPPER(TRIM(s."PRODUCT_OWNER"))
+                  )
                 ORDER BY s."FECHA_APERTURA" ASC
             '''
             db.execute(sql, (usuario,))
@@ -513,11 +514,11 @@ def obtener_solicitudes(usuario, administrador=False):
     finally:
         db.cerrar()
 
+@st.cache_data(ttl=TTL_CACHE, show_spinner=False)
 def obtener_gestiones(id_solicitud):
     db = Database()
     try:
         db.conectar()
-        db.execute("SET TIME ZONE 'America/Bogota'")
         db.execute('''
             SELECT "FECHA_GESTION","OBSERVACION"
             FROM public."GESTIONES"
@@ -532,7 +533,6 @@ def obtener_gestiones(id_solicitud):
         db.cerrar()
 
 
-
 def guardar_auditoria(
     db,
     nombre_archivo,
@@ -540,9 +540,9 @@ def guardar_auditoria(
     registros_funcionales,
     estado,
     observaciones,
-    usuario_carga="Janssen Rodríguez"
+    usuario_carga
 ):
-    """Guarda la auditoría de la carga en public."Auditoria"."""
+    """Guarda la auditoría de la carga en public."AUDITORIA"."""
     fecha_actual = pd.Timestamp.now().to_pydatetime()
 
     db.execute("""
@@ -569,19 +569,14 @@ def guardar_auditoria(
         fecha_actual
     ))
 
-def obtener_pods():
-    """Devuelve la tabla PODS (ID_POD, NOMBRE). Solo se cargan las
-    solicitudes cuyo PRODUCT_OWNER coincide con un NOMBRE de esta tabla."""
-    db = Database()
-    try:
-        db.conectar()
-        db.execute('SELECT "ID_POD","NOMBRE" FROM public."PODS" ORDER BY "ID_POD"')
-        return pd.DataFrame(db.fetchall(), columns=["ID_POD", "NOMBRE"])
-    finally:
-        db.cerrar()
+@st.cache_data(show_spinner=False, max_entries=2)
+def leer_hojas_cacheadas(contenido, product_owners):
+    """Lee el Excel una sola vez por archivo: la vista previa y la carga
+    reutilizan el resultado en lugar de volver a procesarlo en cada clic."""
+    return leer_hojas(io.BytesIO(contenido), product_owners)
 
 
-def ejecutar_carga(archivo, product_owners):
+def ejecutar_carga(archivo, hojas):
     """Carga las solicitudes del archivo y registra la auditoría."""
     db = Database()
 
@@ -590,14 +585,8 @@ def ejecutar_carga(archivo, product_owners):
 
         with st.spinner("Cargando solicitudes en Supabase..."):
             # Cargar las solicitudes
-            resultado = cargar_excel(archivo, db, product_owners)
-
-            # Garantizar que todos los TITULO queden almacenados en MAYÚSCULAS.
-            db.execute("""
-                UPDATE public."SOLICITUDES"
-                SET "TITULO" = UPPER("TITULO")
-                WHERE "TITULO" IS NOT NULL
-            """)
+            # Los TITULO se guardan en MAYÚSCULAS desde cargar_excel().
+            resultado = cargar_excel(hojas, db)
 
             generales = int(resultado.get("generales", 0) or 0)
             funcionales = int(resultado.get("funcionales", 0) or 0)
@@ -621,11 +610,13 @@ def ejecutar_carga(archivo, product_owners):
                 registros_funcionales=funcionales,
                 estado=estado_auditoria,
                 observaciones=observaciones,
-                usuario_carga="Janssen Rodríguez"
+                usuario_carga=nombre_actual or usuario_actual
             )
 
             # Confirmar solicitudes + auditoría
             db.commit()
+
+        st.cache_data.clear()
 
         # El resultado se muestra después del st.rerun().
         st.session_state["resultado_carga"] = {
@@ -656,7 +647,7 @@ def ejecutar_carga(archivo, product_owners):
 # VENTANA TIPO OVERLAY PARA CONFIRMAR LA CARGA
 # ============================================================
 @st.dialog(" ", width="large")
-def ventana_confirmar_carga(archivo, preview, product_owners):
+def ventana_confirmar_carga(archivo, preview, hojas):
 
     encabezado_ventana("Confirmar Carga de Solicitudes")
 
@@ -678,7 +669,7 @@ def ventana_confirmar_carga(archivo, preview, product_owners):
     if cancelar:
         st.rerun()
 
-    if confirmar and ejecutar_carga(archivo, product_owners):
+    if confirmar and ejecutar_carga(archivo, hojas):
         st.rerun()
 
 
@@ -712,7 +703,8 @@ if es_administrador and archivo_excel is not None:
 
     try:
         with st.spinner("Analizando archivo Excel..."):
-            preview = analizar_excel(archivo_excel, product_owners)
+            hojas = leer_hojas_cacheadas(archivo_excel.getvalue(), tuple(product_owners))
+            preview = analizar_excel(hojas)
     except Exception as e:
         st.error("❌ Error analizando el archivo.")
         st.exception(e)
@@ -728,7 +720,7 @@ if es_administrador and archivo_excel is not None:
                               horizontal_alignment="right"):
                 if st.button("", icon=":material/upload:", key="btn_cargar",
                              disabled=preview.empty, help="Cargar solicitudes"):
-                    ventana_confirmar_carga(archivo_excel, preview, product_owners)
+                    ventana_confirmar_carga(archivo_excel, preview, hojas)
 
         if preview.empty:
             st.warning("⚠️ El archivo no contiene solicitudes de los POD registrados en la tabla PODS.")
@@ -753,7 +745,7 @@ if es_administrador and archivo_excel is not None:
             .reset_index(name="CANTIDAD")
             .sort_values("ID_POD")
         )
-        st.dataframe(resumen, use_container_width=True, hide_index=True)
+        st.dataframe(resumen, width="stretch", hide_index=True)
 
         st.markdown("**📋 Solicitudes**")
         st.dataframe(
@@ -761,7 +753,7 @@ if es_administrador and archivo_excel is not None:
                 "ID_SOLICITUD", "ID_POD", "PRODUCT_OWNER", "HOJA", "STATUS",
                 "FECHA_APERTURA", "TITULO", "SUBSERVICIO_AFECTADO"
             ]],
-            use_container_width=True,
+            width="stretch",
             hide_index=True
         )
 
@@ -788,7 +780,6 @@ if texto:
     df_filtrado = df[mascara.any(axis=1)]
 else:
     df_filtrado = df
-
 
 
 def ficha_solicitud(solicitud):
@@ -909,13 +900,9 @@ def ventana_gestion(id_solicitud):
             fecha_guardada = db.fetchone()[0]
 
             db.commit()
+            st.cache_data.clear()
 
-            st.success(
-                f"✅ Gestión guardada correctamente: {fecha_guardada:%Y-%m-%d %H:%M:%S}"
-            )
-            st.caption(
-                f"PostgreSQL devolvió exactamente: {fecha_guardada:%Y-%m-%d %H:%M:%S}"
-            )
+            st.toast(f"✅ Gestión guardada: {fecha_guardada:%Y-%m-%d %H:%M:%S}")
             st.rerun()
 
         except Exception as e:
@@ -966,7 +953,7 @@ def ventana_ver_gestion(id_solicitud):
     # ID_GESTION NO se consulta ni se muestra.
     st.dataframe(
         gestiones_mostrar,
-        use_container_width=True,
+        width="stretch",
         hide_index=True,
         column_config={
             "FECHA_GESTION": st.column_config.TextColumn(
@@ -1169,17 +1156,14 @@ def ventana_actualizar(id_solicitud):
 
             db.commit()
 
+            st.cache_data.clear()
+
             if fecha_cierre_guardada is not None:
                 fecha_hora_mensaje = fecha_cierre_guardada.strftime("%Y-%m-%d %H:%M:%S")
             else:
-                fecha_hora_mensaje = "Sin fecha/hora de cierre"
+                fecha_hora_mensaje = "sin fecha/hora de cierre"
 
-            st.success(
-                f"✅ Solicitud actualizada. Fecha/hora guardada: {fecha_hora_mensaje}"
-            )
-            st.caption(
-                f"PostgreSQL devolvió exactamente: {fecha_hora_mensaje}"
-            )
+            st.toast(f"✅ Solicitud {id_solicitud} actualizada ({fecha_hora_mensaje}).")
             st.rerun()
 
         except Exception as e:
@@ -1192,64 +1176,6 @@ def ventana_actualizar(id_solicitud):
         finally:
             db.cerrar()
 
-
-
-# ============================================================
-# ESTILO TABLA PRINCIPAL
-# ============================================================
-st.markdown("""
-<style>
-/* Encabezados de la tabla */
-.tabla-header {
-    font-size: 13px !important;
-    font-weight: 700 !important;
-    line-height: 1 !important;
-    white-space: nowrap;
-    color: #24344D;
-    padding: 0 !important;
-    margin: 0 !important;
-}
-
-/* Celdas de la tabla */
-.tabla-cell {
-    font-size: 12px !important;
-    line-height: 1 !important;
-    height: 22px !important;
-    min-height: 22px !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-/* Reducir espacios internos de las columnas */
-div[data-testid="column"] {
-    padding-top: 0 !important;
-    padding-bottom: 0 !important;
-}
-
-/* Botones de los formularios: misma forma que "Guardar Gestión" */
-div[data-testid="stFormSubmitButton"] > button,
-div[data-testid="stFormSubmitButton"] button {
-    min-height: 26px !important;
-    height: 26px !important;
-    width: auto !important;
-    min-width: 0 !important;
-    padding: 0 10px !important;
-    margin: 0 !important;
-    font-size: 11px !important;
-    line-height: 1 !important;
-    border-radius: 6px !important;
-}
-
-
-/* Separador del encabezado */
-hr {
-    margin: 2px 0 !important;
-}
-</style>
-""", unsafe_allow_html=True)
 
 # ============================================================
 # TABLA PRINCIPAL
@@ -1304,7 +1230,7 @@ st.dataframe(
     on_select="rerun",
     selection_mode="single-row",
     hide_index=True,
-    use_container_width=True,
+    width="stretch",
     height=min(38 + 35 * len(tabla_solicitudes), 640),
     column_config={
         "ID_SOLICITUD": st.column_config.TextColumn("ID_SOLICITUD", width="small"),

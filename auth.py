@@ -2,35 +2,23 @@ import streamlit as st
 from supabase import create_client, Client
 
 
-@st.cache_resource
 def obtener_cliente_supabase() -> Client:
-    url = st.secrets["supabase"]["url"]
-    key = st.secrets["supabase"]["key"]
-
-    return create_client(url, key)
+    """Cliente nuevo por operación: la sesión de Supabase Auth no se comparte
+    entre los usuarios que usan la aplicación al mismo tiempo."""
+    return create_client(st.secrets["supabase"]["url"], st.secrets["supabase"]["key"])
 
 
 def iniciar_sesion(email: str, password: str):
-    supabase = obtener_cliente_supabase()
-
     try:
-        respuesta = supabase.auth.sign_in_with_password(
-            {
-                "email": email,
-                "password": password,
-            }
+        return obtener_cliente_supabase().auth.sign_in_with_password(
+            {"email": email, "password": password}
         )
-
-        return respuesta
-
     except Exception as e:
         raise Exception(f"No fue posible iniciar sesión: {e}")
 
 
 def cerrar_sesion():
-    supabase = obtener_cliente_supabase()
-
-    try:
-        supabase.auth.sign_out()
-    except Exception:
-        pass
+    # La aplicación no conserva el token de Supabase después del inicio de
+    # sesión (la sesión de PODEX vive en st.session_state), así que no hay
+    # una sesión remota que revocar.
+    pass
