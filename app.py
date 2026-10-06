@@ -6,7 +6,7 @@ from zoneinfo import ZoneInfo
 from database import Database
 from excel_web import analizar_excel, cargar_excel, normalizar_product_owner
 from auth import iniciar_sesion, cerrar_sesion
-from usuarios import mostrar_modulo_usuarios
+from usuarios import mostrar_modulo_usuarios, encabezado_ventana
 
 st.set_page_config(
     page_title="PODEX - Sistema de Gestión POD's Extendidos",
@@ -644,8 +644,10 @@ def ejecutar_carga(archivo, product_owners):
 # ============================================================
 # VENTANA TIPO OVERLAY PARA CONFIRMAR LA CARGA
 # ============================================================
-@st.dialog("⚙️ Confirmar carga de solicitudes", width="large")
+@st.dialog(" ", width="large")
 def ventana_confirmar_carga(archivo, preview, product_owners):
+
+    encabezado_ventana("Confirmar Carga de Solicitudes")
 
     st.markdown("### 📄 Información a cargar")
 
@@ -794,8 +796,10 @@ else:
 # ============================================================
 # VENTANA TIPO OVERLAY PARA INFORMACIÓN + NUEVA GESTIÓN
 # ============================================================
-@st.dialog("📄 Información de la solicitud", width="large")
+@st.dialog(" ", width="large")
 def ventana_gestion(id_solicitud):
+
+    encabezado_ventana("Gestionar Solicitud")
 
     solicitud = df_filtrado[
         df_filtrado["ID_SOLICITUD"] == id_solicitud
@@ -945,8 +949,10 @@ def ventana_gestion(id_solicitud):
 # ============================================================
 # VENTANA TIPO OVERLAY PARA VER GESTIONES
 # ============================================================
-@st.dialog("👁️ Información de la solicitud", width="large")
+@st.dialog(" ", width="large")
 def ventana_ver_gestion(id_solicitud):
+
+    encabezado_ventana("Ver Gestión")
 
     solicitud = df_filtrado[
         df_filtrado["ID_SOLICITUD"] == id_solicitud
@@ -1046,8 +1052,10 @@ def ventana_ver_gestion(id_solicitud):
 # ============================================================
 # VENTANA TIPO OVERLAY PARA ACTUALIZAR SOLICITUD
 # ============================================================
-@st.dialog("⚙️ Actualizar solicitud", width="large")
+@st.dialog(" ", width="large")
 def ventana_actualizar(id_solicitud):
+
+    encabezado_ventana("Actualizar Solicitud")
 
     solicitud = df_filtrado[
         df_filtrado["ID_SOLICITUD"] == id_solicitud
