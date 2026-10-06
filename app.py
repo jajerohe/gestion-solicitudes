@@ -520,14 +520,14 @@ def obtener_gestiones(id_solicitud):
     try:
         db.conectar()
         db.execute('''
-            SELECT "FECHA_GESTION","OBSERVACION"
+            SELECT "FECHA_GESTION","OBSERVACION","USUARIO_REGISTRO","FECHA_REGISTRO"
             FROM public."GESTIONES"
             WHERE "ID_SOLICITUD" = %s
             ORDER BY "FECHA_GESTION" DESC
         ''', (id_solicitud,))
         return pd.DataFrame(
             db.fetchall(),
-            columns=["FECHA_GESTION","OBSERVACION"]
+            columns=["FECHA_GESTION","OBSERVACION","USUARIO_REGISTRO","FECHA_REGISTRO"]
         )
     finally:
         db.cerrar()
@@ -890,11 +890,12 @@ def ventana_gestion(id_solicitud):
             db.execute(
                 """
                 INSERT INTO public."GESTIONES"
-                ("FECHA_GESTION","ID_SOLICITUD","OBSERVACION")
-                VALUES (CAST(%s AS timestamp without time zone), %s, %s)
+                ("FECHA_GESTION","ID_SOLICITUD","OBSERVACION","USUARIO_REGISTRO")
+                VALUES (CAST(%s AS timestamp without time zone), %s, %s, %s)
                 RETURNING "FECHA_GESTION"
                 """,
-                (fecha_db, id_solicitud, observacion)
+                # FECHA_REGISTRO la asigna la base de datos (hora de Bogotá).
+                (fecha_db, id_solicitud, observacion, usuario_actual)
             )
 
             fecha_guardada = db.fetchone()[0]
@@ -943,13 +944,15 @@ def ventana_ver_gestion(id_solicitud):
 
     gestiones_mostrar = gestiones.copy()
 
-    if "FECHA_GESTION" in gestiones_mostrar.columns:
-        gestiones_mostrar["FECHA_GESTION"] = pd.to_datetime(
-            gestiones_mostrar["FECHA_GESTION"],
+    for columna in ("FECHA_GESTION", "FECHA_REGISTRO"):
+        gestiones_mostrar[columna] = pd.to_datetime(
+            gestiones_mostrar[columna],
             errors="coerce"
         ).dt.strftime("%Y-%m-%d %H:%M:%S")
 
-    # Se muestran únicamente Fecha de gestión y Observación.
+    # Las gestiones anteriores a este registro no tienen usuario ni fecha.
+    gestiones_mostrar = gestiones_mostrar.fillna("—")
+
     # ID_GESTION NO se consulta ni se muestra.
     st.dataframe(
         gestiones_mostrar,
@@ -963,6 +966,14 @@ def ventana_ver_gestion(id_solicitud):
             "OBSERVACION": st.column_config.TextColumn(
                 "Observación",
                 width="large"
+            ),
+            "USUARIO_REGISTRO": st.column_config.TextColumn(
+                "Registrado por",
+                width="small"
+            ),
+            "FECHA_REGISTRO": st.column_config.TextColumn(
+                "Fecha registro",
+                width="medium"
             )
         }
     )
