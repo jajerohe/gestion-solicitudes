@@ -1355,9 +1355,7 @@ tabla_solicitudes = df_filtrado[[
     "ID_SOLICITUD", "TITULO", "SUBSERVICIO_AFECTADO", "PRODUCT_OWNER", "STATUS"
 ]].reset_index(drop=True)
 
-c_sel, c_gestion, c_ver, c_actualizar = st.columns(
-    [4, 1, 1, 1], vertical_alignment="center"
-)
+c_sel, c_acciones = st.columns([3, 1], vertical_alignment="center")
 
 seleccion = st.session_state.get("tabla_solicitudes")
 filas = seleccion.selection.rows if seleccion else []
@@ -1373,20 +1371,36 @@ with c_sel:
     else:
         st.caption("☝️ Seleccione una solicitud en la tabla para gestionarla.")
 
-with c_gestion:
-    if st.button("✏️ Gestionar", use_container_width=True, disabled=not sid,
-                 help="Adicionar gestión a la solicitud seleccionada"):
-        ventana_gestion(sid)
+# Botones circulares (mismo estilo del botón de cerrar sesión).
+st.markdown("""
+<style>
+.st-key-acciones_solicitud div[data-testid="stButton"] button{
+    width:40px!important;height:40px!important;min-height:40px!important;
+    padding:0!important;border-radius:50%!important;border:none!important;
+    background:linear-gradient(160deg,#5cc285,#1aa0e0)!important;
+    box-shadow:0 2px 6px rgba(20,90,120,.25)!important;
+    transition:transform .15s,box-shadow .15s}
+.st-key-acciones_solicitud div[data-testid="stButton"] button:hover{
+    transform:scale(1.08);box-shadow:0 3px 10px rgba(20,90,120,.35)!important}
+.st-key-acciones_solicitud div[data-testid="stButton"] button:disabled{
+    opacity:.35;transform:none;box-shadow:none!important}
+.st-key-acciones_solicitud div[data-testid="stButton"] button span{
+    color:#fff!important;font-size:20px!important;margin:0!important}
+</style>
+""", unsafe_allow_html=True)
 
-with c_ver:
-    if st.button("🔍 Ver gestión", use_container_width=True, disabled=not sid,
-                 help="Ver las gestiones de la solicitud seleccionada"):
-        ventana_ver_gestion(sid)
-
-with c_actualizar:
-    if st.button("📝 Actualizar", use_container_width=True, disabled=not sid,
-                 help="Actualizar la solicitud seleccionada"):
-        ventana_actualizar(sid)
+with c_acciones:
+    with st.container(key="acciones_solicitud", horizontal=True,
+                      horizontal_alignment="right", gap="small"):
+        if st.button("", icon=":material/edit:", key="btn_gestionar",
+                     disabled=not sid, help="Gestionar"):
+            ventana_gestion(sid)
+        if st.button("", icon=":material/search:", key="btn_ver_gestion",
+                     disabled=not sid, help="Ver gestión"):
+            ventana_ver_gestion(sid)
+        if st.button("", icon=":material/edit_document:", key="btn_actualizar",
+                     disabled=not sid, help="Actualizar"):
+            ventana_actualizar(sid)
 
 st.markdown('<div style="height:14px"></div>', unsafe_allow_html=True)
 
