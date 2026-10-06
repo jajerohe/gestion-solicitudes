@@ -336,6 +336,17 @@ button[kind="primaryFormSubmit"]{background:var(--dark)!important;border-color:v
 [data-testid="stMetric"]{background:#fff;border:1px solid var(--border);border-radius:7px;padding:9px 11px}[data-testid="stMetricLabel"]{color:#70807a!important}[data-testid="stMetricValue"]{color:var(--dark)!important}
 div[data-testid="stAlert"]{border-radius:7px!important}
 span[data-baseweb="tag"],[data-testid="stMultiSelectTagsContainer"] span[data-tag]{background:var(--dark)!important}
+/* Botones circulares de acción (contenedores con key "acciones_*").
+   Un color de la paleta corporativa por función. */
+[class*="st-key-acciones_"] div[data-testid="stButton"] button{width:40px!important;height:40px!important;min-height:40px!important;padding:0!important;border-radius:50%!important;border:none!important;background:linear-gradient(160deg,#2f6db5,#00214D)!important;box-shadow:0 2px 6px rgba(20,60,90,.25)!important;transition:transform .15s,box-shadow .15s}
+[class*="st-key-acciones_"] div[data-testid="stButton"] button:hover{transform:scale(1.08);box-shadow:0 3px 10px rgba(20,60,90,.35)!important}
+[class*="st-key-acciones_"] div[data-testid="stButton"] button:disabled{opacity:.35;transform:none;box-shadow:none!important}
+[class*="st-key-acciones_"] div[data-testid="stButton"] button span{color:#fff!important;font-size:20px!important;margin:0!important}
+.st-key-btn_gestionar div[data-testid="stButton"] button,.st-key-btn_usr_nuevo div[data-testid="stButton"] button,.st-key-btn_cargar div[data-testid="stButton"] button{background:linear-gradient(160deg,#CCD32A,#004236)!important}
+.st-key-btn_ver_gestion div[data-testid="stButton"] button,.st-key-btn_usr_editar div[data-testid="stButton"] button{background:linear-gradient(160deg,#2f6db5,#00214D)!important}
+.st-key-btn_actualizar div[data-testid="stButton"] button,.st-key-btn_usr_estado div[data-testid="stButton"] button{background:linear-gradient(160deg,#F7DB17,#FF5F00)!important}
+.st-key-btn_usr_clave div[data-testid="stButton"] button{background:linear-gradient(160deg,#C3C5C6,#403833)!important}
+.st-key-btn_usr_eliminar div[data-testid="stButton"] button{background:linear-gradient(160deg,#FF5F00,#8a2c00)!important}
 .tabla-header{color:#356158!important;font-size:10px!important;font-weight:800!important;text-transform:uppercase;letter-spacing:.2px;line-height:1.1!important;white-space:nowrap;padding:0!important}.tabla-cell{color:#40514d!important;font-size:10px!important;line-height:1.15!important;min-height:24px!important;padding:5px 3px!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-bottom:1px solid #edf0ef}div[data-testid="column"]{padding-top:0!important;padding-bottom:0!important}
 div[data-testid="stButton"]>button{border-radius:6px!important;min-height:27px!important;height:27px!important;padding:0 7px!important;font-size:11px!important;color:var(--dark)!important;border:1px solid #cfe0db!important;background:#f5f9f7!important}div[data-testid="stButton"]>button:hover{background:#e8f2ee!important;border-color:#9fc3b8!important}
 div[data-testid="stFormSubmitButton"]>button{border-radius:6px!important;min-height:32px!important;font-weight:700!important}hr{margin:8px 0!important;border-color:#e3e8e6!important}
@@ -711,8 +722,16 @@ if es_administrador and archivo_excel is not None:
         st.stop()
 
     with st.container(border=True):
-        st.markdown('<div class="podex-section-title">👁️ Vista previa de la información a cargar</div>',unsafe_allow_html=True)
-        st.markdown(f'<div class="podex-section-caption">Archivo: {archivo_excel.name} · Solo se incluyen solicitudes de los POD registrados en la tabla PODS.</div>',unsafe_allow_html=True)
+        c_titulo, c_acciones_carga = st.columns([4, 1], vertical_alignment="center")
+        with c_titulo:
+            st.markdown('<div class="podex-section-title">👁️ Vista previa de la información a cargar</div>',unsafe_allow_html=True)
+            st.markdown(f'<div class="podex-section-caption">Archivo: {archivo_excel.name} · Solo se incluyen solicitudes de los POD registrados en la tabla PODS.</div>',unsafe_allow_html=True)
+        with c_acciones_carga:
+            with st.container(key="acciones_carga", horizontal=True,
+                              horizontal_alignment="right"):
+                if st.button("", icon=":material/upload:", key="btn_cargar",
+                             disabled=preview.empty, help="Cargar solicitudes"):
+                    ventana_confirmar_carga(archivo_excel, preview, product_owners)
 
         if preview.empty:
             st.warning("⚠️ El archivo no contiene solicitudes de los POD registrados en la tabla PODS.")
@@ -748,9 +767,6 @@ if es_administrador and archivo_excel is not None:
             use_container_width=True,
             hide_index=True
         )
-
-        if st.button("💾 Cargar solicitudes", type="primary"):
-            ventana_confirmar_carga(archivo_excel, preview, product_owners)
 
 # La página de carga termina aquí; el resto corresponde a la página de solicitudes.
 if pagina_actual == "cargar":
@@ -1371,32 +1387,6 @@ with c_sel:
     else:
         st.caption("☝️ Seleccione una solicitud en la tabla para gestionarla.")
 
-# Botones circulares (mismo estilo del botón de cerrar sesión).
-st.markdown("""
-<style>
-.st-key-acciones_solicitud div[data-testid="stButton"] button{
-    width:40px!important;height:40px!important;min-height:40px!important;
-    padding:0!important;border-radius:50%!important;border:none!important;
-    background:linear-gradient(160deg,#5cc285,#1aa0e0)!important;
-    box-shadow:0 2px 6px rgba(20,90,120,.25)!important;
-    transition:transform .15s,box-shadow .15s}
-.st-key-acciones_solicitud div[data-testid="stButton"] button:hover{
-    transform:scale(1.08);box-shadow:0 3px 10px rgba(20,90,120,.35)!important}
-.st-key-acciones_solicitud div[data-testid="stButton"] button:disabled{
-    opacity:.35;transform:none;box-shadow:none!important}
-/* Un color por función con la paleta corporativa: Gestionar (registrar)
-   verde lima/verde, Ver gestión (consultar) azul, Actualizar (cambiar
-   estado / cerrar) amarillo/naranja. */
-.st-key-btn_gestionar div[data-testid="stButton"] button{
-    background:linear-gradient(160deg,#CCD32A,#004236)!important}
-.st-key-btn_ver_gestion div[data-testid="stButton"] button{
-    background:linear-gradient(160deg,#2f6db5,#00214D)!important}
-.st-key-btn_actualizar div[data-testid="stButton"] button{
-    background:linear-gradient(160deg,#F7DB17,#FF5F00)!important}
-.st-key-acciones_solicitud div[data-testid="stButton"] button span{
-    color:#fff!important;font-size:20px!important;margin:0!important}
-</style>
-""", unsafe_allow_html=True)
 
 with c_acciones:
     with st.container(key="acciones_solicitud", horizontal=True,

@@ -509,20 +509,10 @@ def mostrar_modulo_usuarios(usuario_actual):
 
     hay_admin_auth = obtener_cliente_admin() is not None
 
-    c_buscar, c_nuevo = st.columns([4, 1], vertical_alignment="bottom")
-    with c_buscar:
-        texto = st.text_input(
-            "🔎 Buscar usuario",
-            placeholder="Digite usuario, nombre, correo, perfil o POD..."
-        )
-    with c_nuevo:
-        if st.button(
-            "➕ Nuevo usuario",
-            type="primary",
-            use_container_width=True,
-            disabled=not hay_admin_auth
-        ):
-            ventana_crear_usuario(perfiles, pods_df)
+    texto = st.text_input(
+        "🔎 Buscar usuario",
+        placeholder="Digite usuario, nombre, correo, perfil o POD..."
+    )
 
     if texto:
         texto_busqueda = texto.lower()
@@ -534,70 +524,94 @@ def mostrar_modulo_usuarios(usuario_actual):
         )
         usuarios = usuarios[mascara]
 
-    anchos = [1.2, 2.6, 1.3, 2.6, 1.6, 1.0, 0.7, 0.7, 0.7, 0.7]
-    titulos = [
-        "Usuario", "Nombre", "Perfil", "Correo", "PODs", "Estado",
-        "Editar", "Clave", "Activar", "Eliminar"
-    ]
+    usuarios = usuarios.reset_index(drop=True)
 
-    for col, titulo in zip(st.columns(anchos), titulos):
-        with col:
-            st.markdown(f'<div class="tabla-header">{titulo}</div>', unsafe_allow_html=True)
+    # Fila seleccionada en la cuadrícula (se dibuja más abajo).
+    seleccion = st.session_state.get("tabla_usuarios")
+    filas = seleccion.selection.rows if seleccion else []
+    fila = (
+        usuarios.iloc[filas[0]]
+        if filas and filas[0] < len(usuarios)
+        else None
+    )
 
-    st.divider()
-
-    for _, fila in usuarios.iterrows():
-
-        usuario = fila["USUARIO"]
-        es_mismo_usuario = usuario == usuario_actual
+    if fila is not None:
+        es_mismo_usuario = fila["USUARIO"] == usuario_actual
         tiene_cuenta = bool(fila["AUTH_USER_ID"])
+        activo = fila["ACTIVO"]
+    else:
+        es_mismo_usuario = tiene_cuenta = False
+        activo = None
 
-        if fila["ACTIVO"] is None:
-            estado = "Sin cuenta" if hay_admin_auth else "—"
+    c_sel, c_acciones = st.columns([3, 1.4], vertical_alignment="center")
+
+    with c_sel:
+        if fila is not None:
+            st.markdown(f"**Usuario seleccionado:** {fila['USUARIO']} · {fila['NOMBRE']}")
         else:
-            estado = "🟢 Activo" if fila["ACTIVO"] else "🔴 Inactivo"
+            st.caption("☝️ Seleccione un usuario en la tabla para administrarlo.")
 
-        valores = [
-            usuario,
-            fila["NOMBRE"],
-            fila["PERFIL"],
-            fila["CORREO"] or "—",
-            ", ".join(fila["PODS"]) or "—",
-            estado,
-        ]
+    with c_acciones:
+        with st.container(key="acciones_usuarios", horizontal=True,
+                          horizontal_alignment="right", gap="small"):
+            if st.button("", icon=":material/person_add:", key="btn_usr_nuevo",
+                         disabled=not hay_admin_auth, help="Nuevo usuario"):
+                ventana_crear_usuario(perfiles, pods_df)
 
-        cols = st.columns(anchos)
-
-        for i, valor in enumerate(valores):
-            with cols[i]:
-                st.markdown(
-                    f'<div class="tabla-cell" title="{valor}">{valor}</div>',
-                    unsafe_allow_html=True
-                )
-
-        with cols[6]:
-            if st.button("✏️", key=f"usr_editar_{usuario}", help=f"Editar {usuario}",
-                         use_container_width=True):
+            if st.button("", icon=":material/edit:", key="btn_usr_editar",
+                         disabled=fila is None, help="Editar usuario"):
                 ventana_editar_usuario(fila, perfiles, pods_df, usuario_actual)
 
-        with cols[7]:
-            if st.button("🔑", key=f"usr_clave_{usuario}", help=f"Cambiar contraseña de {usuario}",
-                         use_container_width=True,
-                         disabled=not (hay_admin_auth and tiene_cuenta)):
+            if st.button("", icon=":material/key:", key="btn_usr_clave",
+                         disabled=fila is None or not (hay_admin_auth and tiene_cuenta),
+                         help="Cambiar contraseña"):
                 ventana_contrasena(fila)
 
-        with cols[8]:
-            if st.button("⛔" if fila["ACTIVO"] else "✅", key=f"usr_estado_{usuario}",
-                         help=f"{'Desactivar' if fila['ACTIVO'] else 'Activar'} {usuario}",
-                         use_container_width=True,
-                         disabled=es_mismo_usuario or fila["ACTIVO"] is None):
+            if st.button("", icon=":material/person_off:" if activo is not False else ":material/person_check:",
+                         key="btn_usr_estado",
+                         disabled=fila is None or es_mismo_usuario or activo is None,
+                         help="Activar usuario" if activo is False else "Desactivar usuario"):
                 ventana_estado(fila)
 
-        with cols[9]:
-            if st.button("🗑️", key=f"usr_eliminar_{usuario}", help=f"Eliminar {usuario}",
-                         use_container_width=True,
-                         disabled=es_mismo_usuario or not hay_admin_auth):
+            if st.button("", icon=":material/delete:", key="btn_usr_eliminar",
+                         disabled=fila is None or es_mismo_usuario or not hay_admin_auth,
+                         help="Eliminar usuario"):
                 ventana_eliminar(fila)
 
     if usuarios.empty:
         st.info("ℹ️ No existen usuarios que coincidan con el criterio de búsqueda.")
+        return
+
+    def estado(valor):
+        if valor is None or pd.isna(valor):
+            return "Sin cuenta" if hay_admin_auth else "—"
+        return "🟢 Activo" if valor else "🔴 Inactivo"
+
+    tabla = pd.DataFrame({
+        "USUARIO": usuarios["USUARIO"],
+        "NOMBRE": usuarios["NOMBRE"],
+        "PERFIL": usuarios["PERFIL"],
+        "CORREO": usuarios["CORREO"].fillna("—"),
+        "PODS": usuarios["PODS"].map(lambda p: ", ".join(p) or "—"),
+        "ESTADO": usuarios["ACTIVO"].map(estado),
+    })
+
+    st.markdown('<div style="height:14px"></div>', unsafe_allow_html=True)
+
+    st.dataframe(
+        tabla,
+        key="tabla_usuarios",
+        on_select="rerun",
+        selection_mode="single-row",
+        hide_index=True,
+        use_container_width=True,
+        height=min(38 + 35 * len(tabla), 640),
+        column_config={
+            "USUARIO": st.column_config.TextColumn("USUARIO", width="small"),
+            "NOMBRE": st.column_config.TextColumn("NOMBRE", width="medium"),
+            "PERFIL": st.column_config.TextColumn("PERFIL", width="small"),
+            "CORREO": st.column_config.TextColumn("CORREO", width="medium"),
+            "PODS": st.column_config.TextColumn("PODS", width="small"),
+            "ESTADO": st.column_config.TextColumn("ESTADO", width="small"),
+        },
+    )
