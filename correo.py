@@ -376,12 +376,43 @@ def _tabla_dinamica(registros):
 
 
 def _tarjeta(titulo, contenido):
-    """Tarjeta con borde lima, igual a la de "Datos de su cuenta"."""
+    """Tarjeta con borde lima y franja superior, armada con una tabla para que
+    Outlook (que ignora box-shadow y desalinea bordes de <div>) la muestre igual."""
     return (
-        f'<div style="border:1px solid #9ec91f;border-radius:8px;box-shadow:inset 0 3px 0 {LIMA};'
-        f'padding:16px 18px 18px;">'
-        f'<div style="color:{VERDE_OSCURO};font-size:15px;font-weight:800;margin-bottom:10px;">'
-        f'{escape(titulo)}</div>{contenido}</div>'
+        f'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="#ffffff" '
+        f'style="border-collapse:separate;border:1px solid #9ec91f;border-top:3px solid {LIMA};'
+        f'border-radius:8px;background:#ffffff;">'
+        f'<tr><td style="padding:14px 18px 18px;">'
+        f'<div style="color:{VERDE_OSCURO};font-size:15px;font-weight:800;margin:0 0 10px;">'
+        f'{escape(titulo)}</div>{contenido}</td></tr></table>'
+    )
+
+
+def _vinetas(items):
+    """Lista con viñetas en tabla (Outlook desalinea los <ul>/<li>)."""
+    filas = "".join(
+        f'<tr><td valign="top" width="16" style="color:#17342f;font-size:14px;line-height:1.55;'
+        f'padding:0 0 4px;">&#8226;</td>'
+        f'<td valign="top" style="color:#17342f;font-size:14px;line-height:1.55;padding:0 0 4px;">'
+        f'{item}</td></tr>'
+        for item in items
+    )
+    return (f'<table role="presentation" cellpadding="0" cellspacing="0" '
+            f'style="margin:0 0 8px 6px;">{filas}</table>')
+
+
+def _leyenda():
+    """Leyenda de colores con celdas de tabla (Outlook no muestra los <span>
+    con display:inline-block)."""
+    texto = f"color:{GRIS_TEXTO};font-size:11px;padding:0 12px 0 5px;"
+    cuadro = "width:10px;height:10px;font-size:0;line-height:0;"
+    return (
+        f'<table role="presentation" cellpadding="0" cellspacing="0" style="margin-top:8px;"><tr>'
+        f'<td width="10" height="10" bgcolor="{AMARILLO_CELDA}" style="{cuadro}background:{AMARILLO_CELDA};">&nbsp;</td>'
+        f'<td style="{texto}">0-5 días</td>'
+        f'<td width="10" height="10" bgcolor="{NARANJA_CELDA}" style="{cuadro}background:{NARANJA_CELDA};">&nbsp;</td>'
+        f'<td style="{texto}">Más de 5 días</td>'
+        f'</tr></table>'
     )
 
 
@@ -412,14 +443,7 @@ def construir_correo_backlog(resumen):
     texto += f"\n\nCordialmente,\n{resumen['usuario_carga']}\n"
 
     p = "color:#17342f;font-size:14px;line-height:1.6;margin:0 0 10px;"
-    li = "color:#17342f;font-size:14px;line-height:1.55;margin:0 0 4px;"
-    leyenda = (
-        f'<div style="color:{GRIS_TEXTO};font-size:11px;margin-top:8px;">'
-        f'<span style="display:inline-block;width:10px;height:10px;background:{AMARILLO_CELDA};'
-        f'vertical-align:middle;margin-right:4px;"></span>0-5 días &nbsp;&nbsp;'
-        f'<span style="display:inline-block;width:10px;height:10px;background:{NARANJA_CELDA};'
-        f'vertical-align:middle;margin-right:4px;"></span>Más de 5 días</div>'
-    )
+    leyenda = _leyenda()
 
     tarjeta_general = _tarjeta(
         "Detalle general",
@@ -436,23 +460,26 @@ def construir_correo_backlog(resumen):
   </td></tr>
 
   <tr><td style="padding:4px 32px 18px;">
-    <div style="background:#fffbea;border:1px solid {AMARILLO};border-radius:8px;padding:12px 16px;">
-      <div style="color:{VERDE_OSCURO};font-size:14px;font-weight:800;margin-bottom:4px;">Para recordar que las metas son:</div>
-      <ul style="margin:0 0 8px;padding-left:20px;">
-        <li style="{li}"><strong>IMs (Incidentes) = 24 horas calendario</strong> desde la fecha inicio a cierre satisfactorio.</li>
-        <li style="{li}"><strong>RFs (Requerimientos) = 48 horas calendario</strong> desde la fecha inicio a cierre satisfactorio.</li>
-      </ul>
-      <div style="color:{VERDE_OSCURO};font-size:14px;font-weight:800;margin-bottom:4px;">Acciones que se sugieren realizar ASAP:</div>
-      <ul style="margin:0;padding-left:20px;">
-        <li style="{li}">Revisar casos con aliados para gestionar el cierre en SM.</li>
-        <li style="{li}">Revisar casos con funcionarios de ECP para gestionar el cierre en SM.</li>
-        <li style="{li}">Gestionar con aliados, automatizaciones en flujos de gestión de accesos y demás requerimientos, que permitan seguir disminuyendo los tiempos que a hoy tenemos.</li>
-      </ul>
-    </div>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="#fffbea"
+           style="border-collapse:separate;background:#fffbea;border:1px solid {AMARILLO};border-radius:8px;">
+      <tr><td style="padding:12px 16px 6px;">
+        <div style="color:{VERDE_OSCURO};font-size:14px;font-weight:800;margin:0 0 4px;">Para recordar que las metas son:</div>
+        {_vinetas([
+            "<strong>IMs (Incidentes) = 24 horas calendario</strong> desde la fecha inicio a cierre satisfactorio.",
+            "<strong>RFs (Requerimientos) = 48 horas calendario</strong> desde la fecha inicio a cierre satisfactorio.",
+        ])}
+        <div style="color:{VERDE_OSCURO};font-size:14px;font-weight:800;margin:0 0 4px;">Acciones que se sugieren realizar ASAP:</div>
+        {_vinetas([
+            "Revisar casos con aliados para gestionar el cierre en SM.",
+            "Revisar casos con funcionarios de ECP para gestionar el cierre en SM.",
+            "Gestionar con aliados, automatizaciones en flujos de gestión de accesos y demás requerimientos, que permitan seguir disminuyendo los tiempos que a hoy tenemos.",
+        ])}
+      </td></tr>
+    </table>
   </td></tr>
 
   <tr><td style="padding:0 32px;">{tarjeta_general}</td></tr>
-  {f'<tr><td style="height:24px;font-size:0;line-height:0;">&nbsp;</td></tr><tr><td style="padding:0 32px;">{tarjeta_funcional}</td></tr>' if tarjeta_funcional else ""}
+  {f'<tr><td height="24" bgcolor="#ffffff" style="height:24px;background:#ffffff;font-size:0;line-height:0;">&nbsp;</td></tr><tr><td style="padding:0 32px;">{tarjeta_funcional}</td></tr>' if tarjeta_funcional else ""}
 
   <tr><td style="padding:22px 32px 26px;">
     <p style="{p}margin:0;">Cordialmente,</p>
