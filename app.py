@@ -12,7 +12,7 @@ from usuarios import (
     mostrar_modulo_usuarios, encabezado_ventana, ficha, seccion, obtener_pods,
     obtener_usuarios, obtener_cliente_admin
 )
-from correo import configuracion_correo, enviar_correo_backlog
+from correo import configuracion_correo, enviar_correo_backlog, nombre_backlog
 from pods import mostrar_modulo_pods
 
 # Tiempo máximo (segundos) que se reutilizan los datos consultados entre
@@ -578,7 +578,7 @@ def leer_hojas_cacheadas(contenido, product_owners):
     return leer_hojas(io.BytesIO(contenido), product_owners)
 
 
-def resumen_carga(hojas):
+def resumen_carga(archivo, hojas):
     """Datos del correo de backlog: (Product Owner, TIPO, RANGTIEMPO) de las
     solicitudes cargadas, separados por hoja."""
     registros = {}
@@ -592,7 +592,7 @@ def resumen_carga(hojas):
         registros[hoja] = list(datos[["PRODUCT_OWNER", "TIPO", "RANGTIEMPO"]].itertuples(index=False, name=None))
 
     return {
-        "fecha": datetime.now(ZoneInfo("America/Bogota")).strftime("%d%m%Y"),
+        "archivo": archivo.name,
         "usuario_carga": nombre_actual or usuario_actual,
         "general": registros.get("DETALLE_GENERAL", []),
         "funcional": registros.get("DETALLE_FUNCIONALES", []),
@@ -618,7 +618,7 @@ def notificar_carga(resumen, archivo_bytes):
     except Exception as e:
         return "warning", f"⚠️ La carga se guardó, pero no fue posible enviar el resumen por correo: {e}"
 
-    return "info", f"📧 Correo de backlog ({resumen['fecha']} - Backlog) enviado a {enviados} usuario(s) Operador activo(s)."
+    return "info", f"📧 Correo de backlog ({nombre_backlog(resumen['archivo'])}) enviado a {enviados} usuario(s) Operador activo(s)."
 
 
 def ejecutar_carga(archivo, hojas, notificar=False):
@@ -675,7 +675,7 @@ def ejecutar_carga(archivo, hojas, notificar=False):
         # El correo es informativo: si falla, la carga ya quedó guardada.
         if notificar:
             st.session_state["resultado_carga"]["correo"] = notificar_carga(
-                resumen_carga(hojas), archivo.getvalue()
+                resumen_carga(archivo, hojas), archivo.getvalue()
             )
 
         # Limpia el archivo seleccionado para evitar cargarlo dos veces.
