@@ -296,6 +296,13 @@ Acciones que se sugieren realizar ASAP:
 """
 
 
+def nombre_backlog(nombre_archivo):
+    """'29092026.xlsx' -> '29092026 - Backlog' (sin duplicar 'Backlog' si el
+    archivo ya lo trae en el nombre)."""
+    base = Path(nombre_archivo).stem.strip()
+    return base if base.lower().endswith("backlog") else f"{base} - Backlog"
+
+
 def _orden_rango(rango):
     return ORDEN_RANGOS.index(rango) if rango in ORDEN_RANGOS else len(ORDEN_RANGOS)
 
@@ -371,10 +378,11 @@ def _tabla_texto(registros):
 def construir_correo_backlog(resumen):
     """Devuelve (asunto, texto_plano, html) del correo de backlog.
 
-    resumen: dict con fecha (ddmmaaaa), usuario_carga, general y funcional
-    (listas de (product_owner, tipo, rango) de las solicitudes cargadas).
+    resumen: dict con archivo (nombre del Excel cargado), usuario_carga,
+    general y funcional (listas de (product_owner, tipo, rango) de las
+    solicitudes cargadas).
     """
-    nombre_archivo = f"{resumen['fecha']} - Backlog"
+    nombre_archivo = nombre_backlog(resumen["archivo"])
     asunto = nombre_archivo
     intro = TEXTO_BACKLOG.format(nombre_archivo=nombre_archivo)
 
@@ -445,7 +453,7 @@ def enviar_correo_backlog(correos, resumen, archivo_bytes):
         _subtype="vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
     adjunto.add_header("Content-Disposition", "attachment",
-                       filename=f"{resumen['fecha']} - Backlog.xlsx")
+                       filename=resumen["archivo"])
     mensaje.attach(adjunto)
 
     # send_message() envía a To + Bcc y no incluye el encabezado Bcc en el mensaje.
