@@ -1,6 +1,6 @@
 """
-Correos de PODEX: bienvenida a los usuarios nuevos y resumen de cada carga
-de solicitudes a los usuarios activos. Ambos usan la misma plantilla.
+Correos de PODEX: bienvenida a los usuarios nuevos (plantilla PODEX) y
+backlog de cada carga de solicitudes a los usuarios Operador activos.
 
 Se usa un servidor SMTP configurado en los secretos de Streamlit:
 
@@ -16,6 +16,7 @@ Se usa un servidor SMTP configurado en los secretos de Streamlit:
 import smtplib
 import ssl
 from datetime import datetime
+from email.mime.application import MIMEApplication
 from email.mime.image import MIMEImage
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -271,116 +272,147 @@ def _servidor_smtp(config):
 
 
 # ============================================================
-# RESUMEN DE CARGA DE SOLICITUDES
+# CORREO DE BACKLOG DESPUÉS DE CADA CARGA
 # ============================================================
-def _indicador(etiqueta, valor):
+
+ORDEN_RANGOS = ["0-5 días", "6-10 días", "11-20 días", ">20 días"]
+
+# Colores de la tabla dinámica (estilo Excel).
+AZUL_ENCABEZADO = "#DDEBF7"
+AZUL_BORDE = "#9BC2E6"
+GRIS_TOTAL = "#D9D9D9"
+AMARILLO_CELDA = "#FFC000"
+ROJO_CELDA = "#FF0000"
+
+TEXTO_BACKLOG = """Les comparto el archivo adjunto ({nombre_archivo}) para lograr gestionar y seguir reduciendo al máximo el tiempo de gestión de los incidentes y requerimientos de la JDU para el indicador global de salud del servicio.
+
+Para recordar que las metas son:
+  • IMs (Incidentes) = 24 horas calendario desde la fecha inicio a cierre satisfactorio.
+  • RFs (Requerimientos) = 48 horas calendario desde la fecha inicio a cierre satisfactorio.
+Acciones que se sugieren realizar ASAP:
+  • Revisar casos con aliados para gestionar el cierre en SM.
+  • Revisar casos con funcionarios de ECP para gestionar el cierre en SM.
+  • Gestionar con aliados, automatizaciones en flujos de gestión de accesos y demás requerimientos, que permitan seguir disminuyendo los tiempos que a hoy tenemos.
+"""
+
+
+def _orden_rango(rango):
+    return ORDEN_RANGOS.index(rango) if rango in ORDEN_RANGOS else len(ORDEN_RANGOS)
+
+
+def _tabla_dinamica(registros):
+    """Tabla dinámica HTML: Product Owner por filas; TIPO x RANGTIEMPO por
+    columnas, con totales por tipo y total general (como en Excel).
+    registros: [(product_owner, tipo, rango), ...]."""
+    conteo, tipos = {}, {}
+    for po, tipo, rango in registros:
+        conteo[(po, tipo, rango)] = conteo.get((po, tipo, rango), 0) + 1
+        tipos.setdefault(tipo, set()).add(rango)
+
+    tipos = {t: sorted(r, key=_orden_rango) for t, r in sorted(tipos.items())}
+    total_po = {}
+    for (po, _, _), c in conteo.items():
+        total_po[po] = total_po.get(po, 0) + c
+    filas = sorted(total_po, key=lambda po: (-total_po[po], po))
+
+    fuente = "font-family:Aptos Narrow,Calibri,Arial,sans-serif;font-size:12px;"
+    celda = f"{fuente}padding:2px 6px;white-space:nowrap;"
+    enc = f"{celda}background:{AZUL_ENCABEZADO};font-weight:700;color:#000;"
+    gris = f"{celda}background:{GRIS_TOTAL};text-align:right;"
+
+    # Encabezados: tipos (con su total) y rangos de días.
+    h1 = f'<td style="{enc}">Cuenta de ID_SOLICITUD</td>'
+    h2 = f'<td style="{enc}">Etiquetas de fila</td>'
+    for tipo, rangos in tipos.items():
+        h1 += f'<td colspan="{len(rangos)}" style="{enc}">&#8863; {escape(str(tipo))}</td>'
+        h1 += f'<td rowspan="2" style="{enc}background:{GRIS_TOTAL};vertical-align:top;">Total {escape(str(tipo))}</td>'
+        h2 += "".join(f'<td style="{enc}">{escape(str(r))}</td>' for r in rangos)
+    h1 += f'<td rowspan="2" style="{enc}vertical-align:top;">Total general</td>'
+
+    cuerpo = ""
+    for po in filas:
+        fila = f'<td style="{celda}border-bottom:1px solid #eee;">{escape(str(po))}</td>'
+        for tipo, rangos in tipos.items():
+            subtotal = 0
+            for r in rangos:
+                c = conteo.get((po, tipo, r), 0)
+                subtotal += c
+                color = AMARILLO_CELDA if r == "0-5 días" else ROJO_CELDA
+                fila += (f'<td style="{celda}text-align:right;background:{color};">{c}</td>' if c
+                         else f'<td style="{celda}"></td>')
+            fila += f'<td style="{gris}">{subtotal or ""}</td>'
+        fila += f'<td style="{celda}text-align:right;">{total_po[po]}</td>'
+        cuerpo += f"<tr>{fila}</tr>"
+
+    tot = f"{enc}border-top:1px solid {AZUL_BORDE};text-align:right;"
+    total = f'<td style="{enc}border-top:1px solid {AZUL_BORDE};">Total general</td>'
+    for tipo, rangos in tipos.items():
+        for r in rangos:
+            total += f'<td style="{tot}">{sum(conteo.get((po, tipo, r), 0) for po in filas)}</td>'
+        total += f'<td style="{tot}">{sum(c for (_, t, _), c in conteo.items() if t == tipo)}</td>'
+    total += f'<td style="{tot}">{sum(conteo.values())}</td>'
+
     return (
-        f'<td width="33%" style="padding:0 4px;">'
-        f'<div style="background:#fff;border:1px solid {BORDE};border-radius:8px;padding:12px 14px;">'
-        f'<div style="color:{GRIS_TEXTO};font-size:11px;">{escape(etiqueta)}</div>'
-        f'<div style="color:{VERDE_APP};font-size:26px;font-weight:700;margin-top:4px;">{valor}</div>'
-        f'</div></td>'
+        f'<table cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin:6px 0 18px;">'
+        f"<tr>{h1}</tr><tr>{h2}</tr>{cuerpo}<tr>{total}</tr></table>"
     )
 
 
-def construir_correo_carga(resumen, app_url):
-    """Devuelve (asunto, texto_plano, html) del resumen general de una carga.
+def _tabla_texto(registros):
+    conteo = {}
+    for po, tipo, rango in registros:
+        conteo[(po, tipo, rango)] = conteo.get((po, tipo, rango), 0) + 1
+    return "\n".join(
+        f"  - {po} · {tipo} · {rango}: {c}"
+        for (po, tipo, rango), c in sorted(conteo.items(), key=lambda x: (x[0][0], x[0][1], _orden_rango(x[0][2])))
+    )
 
-    resumen: dict con archivo, fecha, usuario_carga, total, generales_hoja,
-    funcionales_hoja, procesadas, sin_cambios y por_pod [(id_pod, po, cantidad)].
+
+def construir_correo_backlog(resumen):
+    """Devuelve (asunto, texto_plano, html) del correo de backlog.
+
+    resumen: dict con fecha (ddmmaaaa), usuario_carga, general y funcional
+    (listas de (product_owner, tipo, rango) de las solicitudes cargadas).
     """
-    asunto = f"{NOMBRE_SISTEMA} · Nueva carga de solicitudes ({resumen['total']})"
+    nombre_archivo = f"{resumen['fecha']} - Backlog"
+    asunto = nombre_archivo
+    intro = TEXTO_BACKLOG.format(nombre_archivo=nombre_archivo)
 
-    lineas_pod = "\n".join(
-        f"- {i} · {po}: {c}" for i, po, c in resumen["por_pod"]
-    ) or "- Sin solicitudes"
-    texto = f"""Hola,
+    texto = intro + "\nDETALLE GENERAL\n" + (_tabla_texto(resumen["general"]) or "  Sin solicitudes")
+    if resumen["funcional"]:
+        texto += "\n\nGRUPO FUNCIONAL ECOPETROL\n" + _tabla_texto(resumen["funcional"])
+    texto += f"\n\nCordialmente,\n{resumen['usuario_carga']}\n"
 
-Se cargó nueva información de solicitudes en {NOMBRE_SISTEMA} - {DESCRIPCION_SISTEMA}.
+    p = "font-family:Aptos,Calibri,Arial,sans-serif;font-size:14px;color:#000;margin:0;"
+    li = "font-family:Aptos,Calibri,Arial,sans-serif;font-size:14px;color:#000;"
+    html = f"""<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8"></head>
+<body style="margin:0;padding:16px;background:#fff;">
+<p style="{p}">Les comparto el archivo adjunto ({escape(nombre_archivo)}) para lograr gestionar y seguir reduciendo al máximo el tiempo de gestión de los incidentes y requerimientos de la JDU para el indicador global de salud del servicio.</p>
+<br>
+<p style="{p}">Para recordar que las metas son:</p>
+<ul style="margin:0 0 0 18px;padding-left:18px;">
+  <li style="{li}"><b>IMs (Incidentes) = 24 horas calendario</b> desde la fecha inicio a cierre satisfactorio.</li>
+  <li style="{li}"><b>RFs (Requerimientos) = 48 horas calendario</b> desde la fecha inicio a cierre satisfactorio.</li>
+</ul>
+<p style="{p}">Acciones que se sugieren realizar ASAP:</p>
+<ul style="margin:0 0 14px 18px;padding-left:18px;">
+  <li style="{li}">Revisar casos con aliados para gestionar el cierre en SM.</li>
+  <li style="{li}">Revisar casos con funcionarios de ECP para gestionar el cierre en SM.</li>
+  <li style="{li}">Gestionar con aliados, automatizaciones en flujos de gestión de accesos y demás requerimientos, que permitan seguir disminuyendo los tiempos que a hoy tenemos.</li>
+</ul>
+{_tabla_dinamica(resumen["general"]) if resumen["general"] else f'<p style="{p}">Sin solicitudes en DETALLE_GENERAL.</p><br>'}
+{(f'<table cellpadding="0" cellspacing="0" style="border-collapse:collapse;"><tr><td style="font-family:Aptos Narrow,Calibri,Arial,sans-serif;font-size:12px;font-weight:700;background:{AZUL_ENCABEZADO};padding:2px 6px;">Grupo Funcional Ecopetrol</td></tr></table>'
+  + _tabla_dinamica(resumen["funcional"])) if resumen["funcional"] else ""}
+<p style="{p}">Cordialmente,</p>
+<p style="{p}"><b>{escape(resumen["usuario_carga"])}</b></p>
+</body></html>"""
 
-RESUMEN DE LA CARGA
-- Archivo: {resumen['archivo']}
-- Fecha de carga: {resumen['fecha']}
-- Cargado por: {resumen['usuario_carga']}
-- Solicitudes cargadas: {resumen['total']}
-- DETALLE_GENERAL: {resumen['generales_hoja']}
-- DETALLE_FUNCIONALES: {resumen['funcionales_hoja']}
-- Nuevas o actualizadas: {resumen['procesadas']}
-- Sin cambios (ya cerradas): {resumen['sin_cambios']}
-
-SOLICITUDES POR POD
-{lineas_pod}
-
-Ingrese a {app_url} para consultarlas.
-
-{NOMBRE_SISTEMA} · {DESCRIPCION_SISTEMA}
-Este es un mensaje automático, por favor no responda a este correo.
-"""
-
-    filas_info = "".join([
-        _fila("Archivo", escape(resumen["archivo"])),
-        _fila("Fecha de carga", escape(resumen["fecha"])),
-        _fila("Cargado por", escape(resumen["usuario_carga"])),
-        _fila("Nuevas o actualizadas", f"<strong>{resumen['procesadas']}</strong>"),
-        _fila("Sin cambios (ya cerradas)", resumen["sin_cambios"]),
-    ])
-
-    estilo_th = (f'padding:8px 10px;background:{FONDO};color:{GRIS_TEXTO};font-size:11px;'
-                 f'font-weight:700;text-transform:uppercase;letter-spacing:.3px;'
-                 f'border-bottom:1px solid {BORDE};')
-    filas_pod = ""
-    estilo_td = f'padding:8px 10px;border-bottom:1px solid {BORDE};font-size:13px;color:#17342f;'
-    for i, po, c in resumen["por_pod"]:
-        filas_pod += (
-            f'<tr><td style="{estilo_td}">{escape(str(i))}</td>'
-            f'<td style="{estilo_td}">{escape(str(po))}</td>'
-            f'<td align="right" style="{estilo_td}">{c}</td></tr>'
-        )
-    if not filas_pod:
-        filas_pod = (f'<tr><td colspan="3" style="padding:10px;color:{GRIS_TEXTO};font-size:13px;">'
-                     f'Sin solicitudes</td></tr>')
-    cuerpo = f"""  <tr><td style="padding:0 32px;">
-    <p style="color:#17342f;font-size:15px;line-height:1.6;margin:0 0 6px;">Hola,</p>
-    <p style="color:#17342f;font-size:14px;line-height:1.6;margin:0 0 18px;">
-      Se cargó nueva información de solicitudes en <strong>{NOMBRE_SISTEMA}</strong>.
-      Este es el resumen de lo registrado en la base de datos.</p>
-  </td></tr>
-
-  <tr><td style="padding:0 28px 14px;">
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
-      {_indicador("Solicitudes cargadas", resumen["total"])}
-      {_indicador("DETALLE_GENERAL", resumen["generales_hoja"])}
-      {_indicador("DETALLE_FUNCIONALES", resumen["funcionales_hoja"])}
-    </tr></table>
-  </td></tr>
-
-  <tr><td style="padding:0 32px 8px;">
-    <div style="border:1px solid #9ec91f;border-radius:8px;box-shadow:inset 0 3px 0 {LIMA};padding:16px 18px 8px;">
-      <div style="color:{VERDE_OSCURO};font-size:15px;font-weight:800;margin-bottom:6px;">Resumen de la carga</div>
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0">{filas_info}</table>
-    </div>
-  </td></tr>
-
-  <tr><td style="padding:18px 32px 4px;">
-    <div style="color:{VERDE_OSCURO};font-size:15px;font-weight:800;margin-bottom:8px;">Solicitudes por POD</div>
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid {BORDE};border-radius:8px;border-collapse:separate;overflow:hidden;">
-      <tr><td style="{estilo_th}">ID_POD</td><td style="{estilo_th}">PRODUCT_OWNER</td><td align="right" style="{estilo_th}">CANTIDAD</td></tr>
-      {filas_pod}
-    </table>
-  </td></tr>
-
-  <tr><td align="center" style="padding:20px 32px 24px;">
-    <a href="{escape(app_url)}" style="display:inline-block;background:{VERDE_APP};background:linear-gradient(90deg,{VERDE_APP},#147b66);
-       color:#fff;text-decoration:none;font-size:14px;font-weight:700;padding:12px 34px;border-radius:24px;">Ingresar a {NOMBRE_SISTEMA}</a>
-  </td></tr>
-
-"""
-    html = _plantilla("Nueva carga de solicitudes", cuerpo)
     return asunto, texto, html
 
 
-def enviar_resumen_carga(correos, resumen):
-    """Envía UN solo correo con el resumen general de la carga a todos los
+def enviar_correo_backlog(correos, resumen, archivo_bytes):
+    """Envía UN solo correo de backlog con el Excel adjunto a todos los
     correos recibidos. Van en copia oculta (CCO) para no exponer las
     direcciones entre sí; el destinatario visible es la cuenta de PODEX.
     Devuelve el número de destinatarios."""
@@ -392,13 +424,29 @@ def enviar_resumen_carga(correos, resumen):
     if not correos:
         return 0
 
-    app_url = config.get("app_url") or APP_URL_DEFECTO
-    asunto, texto, html = construir_correo_carga(resumen, app_url)
+    asunto, texto, html = construir_correo_backlog(resumen)
 
     remitente = config.get("remitente") or formataddr((NOMBRE_SISTEMA, config["usuario"]))
-    _, correo_remitente = parseaddr(remitente)
-    mensaje = _armar_mensaje(config, correo_remitente or config["usuario"], asunto, texto, html)
+    nombre_rem, correo_rem = parseaddr(remitente)
+
+    mensaje = MIMEMultipart("mixed")
+    mensaje["Subject"] = asunto
+    mensaje["From"] = formataddr((nombre_rem or NOMBRE_SISTEMA, correo_rem or config["usuario"]))
+    mensaje["To"] = correo_rem or config["usuario"]
     mensaje["Bcc"] = ", ".join(correos)
+
+    alternativa = MIMEMultipart("alternative")
+    alternativa.attach(MIMEText(texto, "plain", "utf-8"))
+    alternativa.attach(MIMEText(html, "html", "utf-8"))
+    mensaje.attach(alternativa)
+
+    adjunto = MIMEApplication(
+        archivo_bytes,
+        _subtype="vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    adjunto.add_header("Content-Disposition", "attachment",
+                       filename=f"{resumen['fecha']} - Backlog.xlsx")
+    mensaje.attach(adjunto)
 
     # send_message() envía a To + Bcc y no incluye el encabezado Bcc en el mensaje.
     with _servidor_smtp(config) as servidor:
