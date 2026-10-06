@@ -177,6 +177,27 @@ def encabezado_ventana(titulo):
     )
 
 
+def ficha(campos, columnas=3):
+    """Tarjeta con datos en cuadrícula (etiqueta pequeña + valor), estilo PODEX."""
+    celdas = "".join(
+        f'<div class="podex-ficha-item"><div class="podex-ficha-label">{etiqueta}</div>'
+        f'<div class="podex-ficha-valor">{"—" if valor is None or (isinstance(valor, float) and pd.isna(valor)) or valor == "" else valor}</div></div>'
+        for etiqueta, valor in campos
+    )
+    st.markdown(
+        f'<div class="podex-ficha" style="grid-template-columns:repeat({columnas},minmax(0,1fr))">{celdas}</div>',
+        unsafe_allow_html=True
+    )
+
+
+def seccion(titulo, descripcion=None):
+    """Subtítulo de sección dentro de una ventana, estilo PODEX."""
+    html = f'<div class="podex-section-title podex-dialog-section">{titulo}</div>'
+    if descripcion:
+        html += f'<div class="podex-section-caption">{descripcion}</div>'
+    st.markdown(html, unsafe_allow_html=True)
+
+
 def guardar_pods(db, usuario, pods):
     db.execute('DELETE FROM public."USUARIOS_PODS" WHERE "USUARIO" = %s', (usuario,))
     for id_pod in pods:
@@ -305,7 +326,7 @@ def ventana_editar_usuario(fila, perfiles, pods_df, usuario_actual):
     es_mismo_usuario = fila["USUARIO"] == usuario_actual
     tiene_cuenta = bool(fila["AUTH_USER_ID"])
 
-    st.markdown(f"### 👤 {fila['USUARIO']}")
+    ficha([("Usuario", fila["USUARIO"]), ("Perfil", fila["PERFIL"]), ("PODs", ", ".join(fila["PODS"]))])
 
     with st.form(f"form_editar_{fila['USUARIO']}"):
         c1, c2 = st.columns(2)
@@ -389,7 +410,7 @@ def ventana_contrasena(fila):
 
     encabezado_ventana("Cambiar Contraseña")
 
-    st.markdown(f"### 👤 {fila['USUARIO']} · {fila['NOMBRE']}")
+    ficha([("Usuario", fila["USUARIO"]), ("Nombre", fila["NOMBRE"]), ("Correo", fila["CORREO"])])
 
     with st.form(f"form_contrasena_{fila['USUARIO']}"):
         c1, c2 = st.columns(2)
@@ -428,10 +449,11 @@ def ventana_estado(fila):
     activar = not fila["ACTIVO"]
     accion = "activar" if activar else "desactivar"
 
-    st.markdown(f"### 👤 {fila['USUARIO']} · {fila['NOMBRE']}")
-    if not activar:
-        st.caption("Un usuario desactivado no puede iniciar sesión en PODEX. Sus datos y PODs se conservan.")
-    st.markdown(f"### ❓ ¿Está seguro que desea {accion} este usuario?")
+    ficha([("Usuario", fila["USUARIO"]), ("Nombre", fila["NOMBRE"]), ("Correo", fila["CORREO"])])
+    seccion(
+        f"¿Está seguro que desea {accion} este usuario?",
+        None if activar else "Un usuario desactivado no puede iniciar sesión en PODEX. Sus datos y PODs se conservan."
+    )
 
     with st.form(f"form_estado_{fila['USUARIO']}"):
         with st.container(key="acciones_dlg_estado", horizontal=True,
@@ -462,13 +484,13 @@ def ventana_eliminar(fila):
 
     encabezado_ventana("Eliminar Usuario")
 
-    st.markdown(f"### 👤 {fila['USUARIO']} · {fila['NOMBRE']}")
-    st.caption(
+    ficha([("Usuario", fila["USUARIO"]), ("Nombre", fila["NOMBRE"]), ("Correo", fila["CORREO"])])
+    seccion(
+        "¿Está seguro que desea eliminar este usuario?",
         "Se eliminan el usuario, sus PODs asignados y su cuenta de acceso. "
         "Las solicitudes y gestiones registradas no se modifican. "
         "Esta acción no se puede deshacer."
     )
-    st.markdown("### ❓ ¿Está seguro que desea eliminar este usuario?")
 
     with st.form(f"form_eliminar_{fila['USUARIO']}"):
         with st.container(key="acciones_dlg_eliminar", horizontal=True,

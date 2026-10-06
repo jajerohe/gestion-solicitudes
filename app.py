@@ -6,7 +6,7 @@ from zoneinfo import ZoneInfo
 from database import Database
 from excel_web import analizar_excel, cargar_excel, normalizar_product_owner
 from auth import iniciar_sesion, cerrar_sesion
-from usuarios import mostrar_modulo_usuarios, encabezado_ventana
+from usuarios import mostrar_modulo_usuarios, encabezado_ventana, ficha, seccion
 
 st.set_page_config(
     page_title="PODEX - Sistema de Gestión POD's Extendidos",
@@ -336,6 +336,11 @@ button[kind="primaryFormSubmit"]{background:var(--dark)!important;border-color:v
 [data-testid="stMetric"]{background:#fff;border:1px solid var(--border);border-radius:7px;padding:9px 11px}[data-testid="stMetricLabel"]{color:#70807a!important}[data-testid="stMetricValue"]{color:var(--dark)!important}
 div[data-testid="stAlert"]{border-radius:7px!important}
 span[data-baseweb="tag"],[data-testid="stMultiSelectTagsContainer"] span[data-tag]{background:var(--dark)!important}
+.podex-ficha{display:grid;gap:12px 22px;background:#fff;border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin:2px 0 6px;box-shadow:0 2px 7px rgba(20,45,40,.035)}
+.podex-ficha-label{color:#7b8582;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.4px}
+.podex-ficha-valor{color:var(--text);font-size:12px;margin-top:3px;line-height:1.35;word-break:break-word}
+.podex-dialog-section{margin-top:14px!important}
+div[role="dialog"] div[data-testid="stForm"]{border-color:var(--border)!important;border-radius:8px!important;background:#fff!important}
 /* Botones circulares de acción (contenedores con key "acciones_*").
    Un color de la paleta corporativa por función. */
 [class*="st-key-acciones_"] div[data-testid="stButton"] button,[class*="st-key-acciones_"] div[data-testid="stFormSubmitButton"] button{width:40px!important;height:40px!important;min-height:40px!important;padding:0!important;border-radius:50%!important;border:none!important;background:linear-gradient(160deg,#2f6db5,#00214D)!important;box-shadow:0 2px 6px rgba(20,60,90,.25)!important;transition:transform .15s,box-shadow .15s}
@@ -649,27 +654,14 @@ def ventana_confirmar_carga(archivo, preview, product_owners):
 
     encabezado_ventana("Confirmar Carga de Solicitudes")
 
-    st.markdown("### 📄 Información a cargar")
+    ficha([
+        ("Archivo", archivo.name),
+        ("Solicitudes", len(preview)),
+        ("DETALLE_GENERAL", int((preview["HOJA"] == "DETALLE_GENERAL").sum())),
+        ("DETALLE_FUNCIONALES", int((preview["HOJA"] == "DETALLE_FUNCIONALES").sum())),
+    ], columnas=4)
 
-    c1, c2, c3, c4 = st.columns(4)
-    with c1:
-        st.markdown(f"**ARCHIVO**  \n{archivo.name}")
-    with c2:
-        st.markdown(f"**SOLICITUDES**  \n{len(preview)}")
-    with c3:
-        st.markdown(
-            f"**DETALLE_GENERAL**  \n"
-            f"{(preview['HOJA'] == 'DETALLE_GENERAL').sum()}"
-        )
-    with c4:
-        st.markdown(
-            f"**DETALLE_FUNCIONALES**  \n"
-            f"{(preview['HOJA'] == 'DETALLE_FUNCIONALES').sum()}"
-        )
-
-    st.divider()
-
-    st.markdown("### ❓ ¿Está seguro que desea cargar estas solicitudes?")
+    seccion("¿Está seguro que desea cargar estas solicitudes?")
 
     with st.form("form_confirmar_carga"):
         with st.container(key="acciones_dlg_carga", horizontal=True,
@@ -793,6 +785,24 @@ else:
 
 
 
+def ficha_solicitud(solicitud):
+    """Datos principales de la solicitud en la tarjeta estilo PODEX."""
+    fecha_apertura = solicitud["FECHA_APERTURA"]
+    if pd.notna(fecha_apertura):
+        fecha_apertura = pd.to_datetime(fecha_apertura).strftime("%Y-%m-%d %H:%M:%S")
+    ficha([
+        ("ID solicitud", solicitud["ID_SOLICITUD"]),
+        ("Product Owner", solicitud["PRODUCT_OWNER"]),
+        ("Estado", solicitud["STATUS"]),
+        ("Título", solicitud["TITULO"]),
+        ("Asignado a", solicitud["ASIGNADO_A"]),
+        ("Fecha apertura", fecha_apertura),
+        ("Subservicio afectado", solicitud["SUBSERVICIO_AFECTADO"]),
+        ("Nombre asignatario", solicitud["NOMBRE_ASIGNATARIO"]),
+        ("Correo asignatario", solicitud["CORREO_ASIGNATARIO"]),
+    ])
+
+
 # ============================================================
 # VENTANA TIPO OVERLAY PARA INFORMACIÓN + NUEVA GESTIÓN
 # ============================================================
@@ -805,39 +815,9 @@ def ventana_gestion(id_solicitud):
         df_filtrado["ID_SOLICITUD"] == id_solicitud
     ].iloc[0]
 
-    # Información de la solicitud
+    ficha_solicitud(solicitud)
 
-    a, b, c = st.columns(3)
-
-    with a:
-        st.markdown(f"**ID_SOLICITUD**  \n{solicitud['ID_SOLICITUD']}")
-        st.markdown(f"**TÍTULO**  \n{solicitud['TITULO']}")
-        st.markdown(
-            f"**SUBSERVICIO AFECTADO**  \n"
-            f"{solicitud['SUBSERVICIO_AFECTADO']}"
-        )
-
-    with b:
-        st.markdown(f"**PRODUCT OWNER**  \n{solicitud['PRODUCT_OWNER']}")
-        st.markdown(f"**ASIGNADO A**  \n{solicitud['ASIGNADO_A']}")
-        st.markdown(
-            f"**NOMBRE ASIGNATARIO**  \n"
-            f"{solicitud['NOMBRE_ASIGNATARIO']}"
-        )
-
-    with c:
-        st.markdown(
-            f"**CORREO ASIGNATARIO**  \n"
-            f"{solicitud['CORREO_ASIGNATARIO']}"
-        )
-        st.markdown(f"**ESTADO**  \n{solicitud['STATUS']}")
-        st.markdown(
-            f"**FECHA APERTURA**  \n"
-            f"{solicitud['FECHA_APERTURA']}"
-        )
-
-    st.divider()
-    st.markdown("### 📝 Nueva gestión")
+    seccion("Nueva gestión", "Registre la fecha, la hora y la observación de la gestión realizada.")
 
     with st.form(f"form_gestion_popup_{id_solicitud}"):
 
@@ -853,7 +833,7 @@ def ventana_gestion(id_solicitud):
 
         with c_hora:
             hora_gestion_texto = st.text_input(
-                "Hora de gestión 🕐",
+                "Hora de gestión",
                 value="",
                 max_chars=8,
                 key=f"hora_gestion_{id_solicitud}",
@@ -957,57 +937,9 @@ def ventana_ver_gestion(id_solicitud):
         df_filtrado["ID_SOLICITUD"] == id_solicitud
     ].iloc[0]
 
-    # ========================================================
-    # INFORMACIÓN DE LA SOLICITUD
-    # ========================================================
+    ficha_solicitud(solicitud)
 
-    a, b, c = st.columns(3)
-
-    with a:
-        st.markdown(
-            f"**ID_SOLICITUD**  \n{solicitud['ID_SOLICITUD']}"
-        )
-        st.markdown(
-            f"**TÍTULO**  \n{solicitud['TITULO']}"
-        )
-        st.markdown(
-            f"**SUBSERVICIO AFECTADO**  \n{solicitud['SUBSERVICIO_AFECTADO']}"
-        )
-
-    with b:
-        st.markdown(
-            f"**PRODUCT OWNER**  \n{solicitud['PRODUCT_OWNER']}"
-        )
-        st.markdown(
-            f"**ASIGNADO A**  \n{solicitud['ASIGNADO_A']}"
-        )
-        st.markdown(
-            f"**NOMBRE ASIGNATARIO**  \n{solicitud['NOMBRE_ASIGNATARIO']}"
-        )
-
-    with c:
-        st.markdown(
-            f"**CORREO ASIGNATARIO**  \n{solicitud['CORREO_ASIGNATARIO']}"
-        )
-        st.markdown(
-            f"**ESTADO**  \n{solicitud['STATUS']}"
-        )
-
-        fecha_apertura = solicitud['FECHA_APERTURA']
-        if pd.notna(fecha_apertura):
-            fecha_apertura = pd.to_datetime(
-                fecha_apertura
-            ).strftime("%Y-%m-%d %H:%M:%S")
-
-        st.markdown(
-            f"**FECHA APERTURA**  \n{fecha_apertura}"
-        )
-
-    # ========================================================
-    # GESTIONES REGISTRADAS
-    # ========================================================
-    st.divider()
-    st.markdown("### 📝 Gestiones registradas")
+    seccion("Gestiones registradas")
 
     try:
         gestiones = obtener_gestiones(id_solicitud)
@@ -1060,37 +992,9 @@ def ventana_actualizar(id_solicitud):
     ].iloc[0]
 
 
-    a, b, c = st.columns(3)
+    ficha_solicitud(solicitud)
 
-    with a:
-        st.markdown(f"**ID_SOLICITUD**  \n{solicitud['ID_SOLICITUD']}")
-        st.markdown(f"**TÍTULO**  \n{solicitud['TITULO']}")
-        st.markdown(
-            f"**SUBSERVICIO AFECTADO**  \n"
-            f"{solicitud['SUBSERVICIO_AFECTADO']}"
-        )
-
-    with b:
-        st.markdown(f"**PRODUCT OWNER**  \n{solicitud['PRODUCT_OWNER']}")
-        st.markdown(f"**ASIGNADO A**  \n{solicitud['ASIGNADO_A']}")
-        st.markdown(
-            f"**NOMBRE ASIGNATARIO**  \n"
-            f"{solicitud['NOMBRE_ASIGNATARIO']}"
-        )
-
-    with c:
-        st.markdown(
-            f"**CORREO ASIGNATARIO**  \n"
-            f"{solicitud['CORREO_ASIGNATARIO']}"
-        )
-        st.markdown(f"**ESTADO**  \n{solicitud['STATUS']}")
-        st.markdown(
-            f"**FECHA APERTURA**  \n"
-            f"{solicitud['FECHA_APERTURA']}"
-        )
-
-    st.divider()
-    st.markdown("### ⚙️ Actualizar solicitud")
+    seccion("Actualizar solicitud", "Cambie el estado o registre el código, la fecha y la hora de cierre.")
 
     estados = [
         "Cancelled",
@@ -1203,7 +1107,7 @@ def ventana_actualizar(id_solicitud):
 
             with c_hora:
                 hora_cierre_texto = st.text_input(
-                    "Hora de cierre 🕐",
+                    "Hora de cierre",
                     value=hora_default,
                     max_chars=8,
                     placeholder="HH:MM:SS",
