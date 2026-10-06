@@ -82,7 +82,7 @@ def _paso(numero, texto):
     )
 
 
-def _plantilla(titulo, cuerpo):
+def _plantilla(titulo, cuerpo, ancho=600):
     """Estructura común de los correos: franja de colores, logo, título,
     cuerpo y pie con el nombre del sistema."""
     anio = datetime.now().year
@@ -91,7 +91,7 @@ def _plantilla(titulo, cuerpo):
 <body style="margin:0;padding:0;background:{FONDO};font-family:'Segoe UI',Arial,sans-serif;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:{FONDO};padding:24px 12px;">
 <tr><td align="center">
-<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#fff;border-radius:10px;overflow:hidden;border:1px solid {BORDE};">
+<table role="presentation" width="{ancho}" cellpadding="0" cellspacing="0" style="max-width:{ancho}px;width:100%;background:#fff;border-radius:10px;overflow:hidden;border:1px solid {BORDE};">
 
   <tr><td style="height:6px;background:linear-gradient(90deg,{AMARILLO},{LIMA},{VERDE_OSCURO});background-color:{LIMA};font-size:0;line-height:0;">&nbsp;</td></tr>
   <tr><td align="center" style="padding:26px 24px 10px;">
@@ -277,12 +277,10 @@ def _servidor_smtp(config):
 
 ORDEN_RANGOS = ["0-5 días", "6-10 días", "11-20 días", ">20 días"]
 
-# Colores de la tabla dinámica (estilo Excel).
-AZUL_ENCABEZADO = "#DDEBF7"
-AZUL_BORDE = "#9BC2E6"
-GRIS_TOTAL = "#D9D9D9"
-AMARILLO_CELDA = "#FFC000"
-ROJO_CELDA = "#FF0000"
+# Colores de la tabla dinámica con la paleta corporativa del sistema.
+VERDE_TOTAL = "#eef4e6"      # columnas de total por tipo
+AMARILLO_CELDA = "#F7DB17"   # 0-5 días (dentro de meta cercana)
+NARANJA_CELDA = "#FF5F00"    # más de 5 días
 
 TEXTO_BACKLOG = """Les comparto el archivo adjunto ({nombre_archivo}) para lograr gestionar y seguir reduciendo al máximo el tiempo de gestión de los incidentes y requerimientos de la JDU para el indicador global de salud del servicio.
 
@@ -309,8 +307,8 @@ def _orden_rango(rango):
 
 def _tabla_dinamica(registros):
     """Tabla dinámica HTML: Product Owner por filas; TIPO x RANGTIEMPO por
-    columnas, con totales por tipo y total general (como en Excel).
-    registros: [(product_owner, tipo, rango), ...]."""
+    columnas, con totales por tipo y total general (como en Excel), con los
+    colores del sistema. registros: [(product_owner, tipo, rango), ...]."""
     conteo, tipos = {}, {}
     for po, tipo, rango in registros:
         conteo[(po, tipo, rango)] = conteo.get((po, tipo, rango), 0) + 1
@@ -322,46 +320,68 @@ def _tabla_dinamica(registros):
         total_po[po] = total_po.get(po, 0) + c
     filas = sorted(total_po, key=lambda po: (-total_po[po], po))
 
-    fuente = "font-family:Aptos Narrow,Calibri,Arial,sans-serif;font-size:12px;"
-    celda = f"{fuente}padding:2px 6px;white-space:nowrap;"
-    enc = f"{celda}background:{AZUL_ENCABEZADO};font-weight:700;color:#000;"
-    gris = f"{celda}background:{GRIS_TOTAL};text-align:right;"
+    celda = (f"font-family:'Segoe UI',Arial,sans-serif;font-size:12px;color:#17342f;"
+             f"padding:6px 8px;border-bottom:1px solid {BORDE};white-space:nowrap;")
+    enc = (f"{celda}background:{FONDO};color:{GRIS_TEXTO};font-size:10px;font-weight:700;"
+           f"text-transform:uppercase;letter-spacing:.3px;")
+    num = f"{celda}text-align:right;"
+    total_tipo = f"{num}background:{VERDE_TOTAL};font-weight:700;color:{VERDE_OSCURO};"
 
     # Encabezados: tipos (con su total) y rangos de días.
-    h1 = f'<td style="{enc}">Cuenta de ID_SOLICITUD</td>'
-    h2 = f'<td style="{enc}">Etiquetas de fila</td>'
+    h1 = f'<td rowspan="2" style="{enc}vertical-align:bottom;">Product Owner</td>'
+    h2 = ""
     for tipo, rangos in tipos.items():
-        h1 += f'<td colspan="{len(rangos)}" style="{enc}">&#8863; {escape(str(tipo))}</td>'
-        h1 += f'<td rowspan="2" style="{enc}background:{GRIS_TOTAL};vertical-align:top;">Total {escape(str(tipo))}</td>'
-        h2 += "".join(f'<td style="{enc}">{escape(str(r))}</td>' for r in rangos)
-    h1 += f'<td rowspan="2" style="{enc}vertical-align:top;">Total general</td>'
+        h1 += (f'<td colspan="{len(rangos)}" align="center" style="{enc}text-align:center;'
+               f'color:{VERDE_OSCURO};border-bottom:2px solid {LIMA};">{escape(str(tipo))}</td>')
+        h1 += (f'<td rowspan="2" style="{enc}background:{VERDE_TOTAL};color:{VERDE_OSCURO};'
+               f'text-align:right;vertical-align:bottom;">Total<br>{escape(str(tipo).lower())}</td>')
+        h2 += "".join(f'<td style="{enc}text-align:right;">{escape(str(r))}</td>' for r in rangos)
+    h1 += (f'<td rowspan="2" style="{enc}text-align:right;vertical-align:bottom;'
+           f'color:{VERDE_OSCURO};">Total<br>general</td>')
 
     cuerpo = ""
     for po in filas:
-        fila = f'<td style="{celda}border-bottom:1px solid #eee;">{escape(str(po))}</td>'
+        fila = f'<td style="{celda}">{escape(str(po))}</td>'
         for tipo, rangos in tipos.items():
             subtotal = 0
             for r in rangos:
                 c = conteo.get((po, tipo, r), 0)
                 subtotal += c
-                color = AMARILLO_CELDA if r == "0-5 días" else ROJO_CELDA
-                fila += (f'<td style="{celda}text-align:right;background:{color};">{c}</td>' if c
-                         else f'<td style="{celda}"></td>')
-            fila += f'<td style="{gris}">{subtotal or ""}</td>'
-        fila += f'<td style="{celda}text-align:right;">{total_po[po]}</td>'
+                if not c:
+                    fila += f'<td style="{num}"></td>'
+                elif r == "0-5 días":
+                    fila += f'<td style="{num}background:{AMARILLO_CELDA};font-weight:700;">{c}</td>'
+                else:
+                    fila += (f'<td style="{num}background:{NARANJA_CELDA};color:#fff;'
+                             f'font-weight:700;">{c}</td>')
+            fila += f'<td style="{total_tipo}">{subtotal or ""}</td>'
+        fila += f'<td style="{num}font-weight:700;">{total_po[po]}</td>'
         cuerpo += f"<tr>{fila}</tr>"
 
-    tot = f"{enc}border-top:1px solid {AZUL_BORDE};text-align:right;"
-    total = f'<td style="{enc}border-top:1px solid {AZUL_BORDE};">Total general</td>'
+    pie = (f"font-family:'Segoe UI',Arial,sans-serif;font-size:12px;font-weight:700;"
+           f"color:#fff;background:{VERDE_OSCURO};padding:7px 8px;white-space:nowrap;")
+    total = f'<td style="{pie}">Total general</td>'
     for tipo, rangos in tipos.items():
         for r in rangos:
-            total += f'<td style="{tot}">{sum(conteo.get((po, tipo, r), 0) for po in filas)}</td>'
-        total += f'<td style="{tot}">{sum(c for (_, t, _), c in conteo.items() if t == tipo)}</td>'
-    total += f'<td style="{tot}">{sum(conteo.values())}</td>'
+            total += (f'<td style="{pie}text-align:right;">'
+                      f'{sum(conteo.get((po, tipo, r), 0) for po in filas)}</td>')
+        total += f'<td style="{pie}text-align:right;">{sum(c for (_, t, _), c in conteo.items() if t == tipo)}</td>'
+    total += f'<td style="{pie}text-align:right;">{sum(conteo.values())}</td>'
 
     return (
-        f'<table cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin:6px 0 18px;">'
+        f'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" '
+        f'style="border-collapse:collapse;border:1px solid {BORDE};">'
         f"<tr>{h1}</tr><tr>{h2}</tr>{cuerpo}<tr>{total}</tr></table>"
+    )
+
+
+def _tarjeta(titulo, contenido):
+    """Tarjeta con borde lima, igual a la de "Datos de su cuenta"."""
+    return (
+        f'<div style="border:1px solid #9ec91f;border-radius:8px;box-shadow:inset 0 3px 0 {LIMA};'
+        f'padding:16px 18px 18px;">'
+        f'<div style="color:{VERDE_OSCURO};font-size:15px;font-weight:800;margin-bottom:10px;">'
+        f'{escape(titulo)}</div>{contenido}</div>'
     )
 
 
@@ -391,30 +411,56 @@ def construir_correo_backlog(resumen):
         texto += "\n\nGRUPO FUNCIONAL ECOPETROL\n" + _tabla_texto(resumen["funcional"])
     texto += f"\n\nCordialmente,\n{resumen['usuario_carga']}\n"
 
-    p = "font-family:Aptos,Calibri,Arial,sans-serif;font-size:14px;color:#000;margin:0;"
-    li = "font-family:Aptos,Calibri,Arial,sans-serif;font-size:14px;color:#000;"
-    html = f"""<!DOCTYPE html>
-<html lang="es"><head><meta charset="utf-8"></head>
-<body style="margin:0;padding:16px;background:#fff;">
-<p style="{p}">Les comparto el archivo adjunto ({escape(nombre_archivo)}) para lograr gestionar y seguir reduciendo al máximo el tiempo de gestión de los incidentes y requerimientos de la JDU para el indicador global de salud del servicio.</p>
-<br>
-<p style="{p}">Para recordar que las metas son:</p>
-<ul style="margin:0 0 0 18px;padding-left:18px;">
-  <li style="{li}"><b>IMs (Incidentes) = 24 horas calendario</b> desde la fecha inicio a cierre satisfactorio.</li>
-  <li style="{li}"><b>RFs (Requerimientos) = 48 horas calendario</b> desde la fecha inicio a cierre satisfactorio.</li>
-</ul>
-<p style="{p}">Acciones que se sugieren realizar ASAP:</p>
-<ul style="margin:0 0 14px 18px;padding-left:18px;">
-  <li style="{li}">Revisar casos con aliados para gestionar el cierre en SM.</li>
-  <li style="{li}">Revisar casos con funcionarios de ECP para gestionar el cierre en SM.</li>
-  <li style="{li}">Gestionar con aliados, automatizaciones en flujos de gestión de accesos y demás requerimientos, que permitan seguir disminuyendo los tiempos que a hoy tenemos.</li>
-</ul>
-{_tabla_dinamica(resumen["general"]) if resumen["general"] else f'<p style="{p}">Sin solicitudes en DETALLE_GENERAL.</p><br>'}
-{(f'<table cellpadding="0" cellspacing="0" style="border-collapse:collapse;"><tr><td style="font-family:Aptos Narrow,Calibri,Arial,sans-serif;font-size:12px;font-weight:700;background:{AZUL_ENCABEZADO};padding:2px 6px;">Grupo Funcional Ecopetrol</td></tr></table>'
-  + _tabla_dinamica(resumen["funcional"])) if resumen["funcional"] else ""}
-<p style="{p}">Cordialmente,</p>
-<p style="{p}"><b>{escape(resumen["usuario_carga"])}</b></p>
-</body></html>"""
+    p = "color:#17342f;font-size:14px;line-height:1.6;margin:0 0 10px;"
+    li = "color:#17342f;font-size:14px;line-height:1.55;margin:0 0 4px;"
+    leyenda = (
+        f'<div style="color:{GRIS_TEXTO};font-size:11px;margin-top:8px;">'
+        f'<span style="display:inline-block;width:10px;height:10px;background:{AMARILLO_CELDA};'
+        f'vertical-align:middle;margin-right:4px;"></span>0-5 días &nbsp;&nbsp;'
+        f'<span style="display:inline-block;width:10px;height:10px;background:{NARANJA_CELDA};'
+        f'vertical-align:middle;margin-right:4px;"></span>Más de 5 días</div>'
+    )
+
+    tarjeta_general = _tarjeta(
+        "Detalle general",
+        (_tabla_dinamica(resumen["general"]) + leyenda) if resumen["general"]
+        else f'<p style="{p}">Sin solicitudes en DETALLE_GENERAL.</p>'
+    )
+    tarjeta_funcional = (
+        _tarjeta("Grupo Funcional Ecopetrol", _tabla_dinamica(resumen["funcional"]) + leyenda)
+        if resumen["funcional"] else ""
+    )
+
+    cuerpo = f"""  <tr><td style="padding:0 32px;">
+    <p style="{p}">Les comparto el archivo adjunto (<strong>{escape(nombre_archivo)}</strong>) para lograr gestionar y seguir reduciendo al máximo el tiempo de gestión de los incidentes y requerimientos de la JDU para el indicador global de salud del servicio.</p>
+  </td></tr>
+
+  <tr><td style="padding:4px 32px 18px;">
+    <div style="background:#fffbea;border:1px solid {AMARILLO};border-radius:8px;padding:12px 16px;">
+      <div style="color:{VERDE_OSCURO};font-size:14px;font-weight:800;margin-bottom:4px;">Para recordar que las metas son:</div>
+      <ul style="margin:0 0 8px;padding-left:20px;">
+        <li style="{li}"><strong>IMs (Incidentes) = 24 horas calendario</strong> desde la fecha inicio a cierre satisfactorio.</li>
+        <li style="{li}"><strong>RFs (Requerimientos) = 48 horas calendario</strong> desde la fecha inicio a cierre satisfactorio.</li>
+      </ul>
+      <div style="color:{VERDE_OSCURO};font-size:14px;font-weight:800;margin-bottom:4px;">Acciones que se sugieren realizar ASAP:</div>
+      <ul style="margin:0;padding-left:20px;">
+        <li style="{li}">Revisar casos con aliados para gestionar el cierre en SM.</li>
+        <li style="{li}">Revisar casos con funcionarios de ECP para gestionar el cierre en SM.</li>
+        <li style="{li}">Gestionar con aliados, automatizaciones en flujos de gestión de accesos y demás requerimientos, que permitan seguir disminuyendo los tiempos que a hoy tenemos.</li>
+      </ul>
+    </div>
+  </td></tr>
+
+  <tr><td style="padding:0 32px;">{tarjeta_general}</td></tr>
+  {f'<tr><td style="height:24px;font-size:0;line-height:0;">&nbsp;</td></tr><tr><td style="padding:0 32px;">{tarjeta_funcional}</td></tr>' if tarjeta_funcional else ""}
+
+  <tr><td style="padding:22px 32px 26px;">
+    <p style="{p}margin:0;">Cordialmente,</p>
+    <p style="{p}margin:0;"><strong>{escape(resumen["usuario_carga"])}</strong></p>
+  </td></tr>
+
+"""
+    html = _plantilla(nombre_archivo, cuerpo, ancho=900)
 
     return asunto, texto, html
 
@@ -435,18 +481,16 @@ def enviar_correo_backlog(correos, resumen, archivo_bytes):
     asunto, texto, html = construir_correo_backlog(resumen)
 
     remitente = config.get("remitente") or formataddr((NOMBRE_SISTEMA, config["usuario"]))
-    nombre_rem, correo_rem = parseaddr(remitente)
+    _, correo_rem = parseaddr(remitente)
 
+    # mixed = [related (texto/HTML + logo incrustado), Excel adjunto]
+    cuerpo = _armar_mensaje(config, correo_rem or config["usuario"], asunto, texto, html)
     mensaje = MIMEMultipart("mixed")
-    mensaje["Subject"] = asunto
-    mensaje["From"] = formataddr((nombre_rem or NOMBRE_SISTEMA, correo_rem or config["usuario"]))
-    mensaje["To"] = correo_rem or config["usuario"]
+    for encabezado in ("Subject", "From", "To"):
+        mensaje[encabezado] = cuerpo[encabezado]
+        del cuerpo[encabezado]
     mensaje["Bcc"] = ", ".join(correos)
-
-    alternativa = MIMEMultipart("alternative")
-    alternativa.attach(MIMEText(texto, "plain", "utf-8"))
-    alternativa.attach(MIMEText(html, "html", "utf-8"))
-    mensaje.attach(alternativa)
+    mensaje.attach(cuerpo)
 
     adjunto = MIMEApplication(
         archivo_bytes,
