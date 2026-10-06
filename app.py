@@ -607,22 +607,25 @@ def resumen_carga(archivo, hojas, resultado):
 
 
 def notificar_carga(resumen):
-    """Envía un solo correo con el resumen general de la carga a todos los
-    usuarios activos. Devuelve (tipo, mensaje) para mostrar después."""
+    """Envía un solo correo con el resumen general de la carga a los
+    usuarios activos de perfil Operador. Devuelve (tipo, mensaje)."""
     try:
         usuarios = obtener_usuarios()
         correos = usuarios.loc[
-            (usuarios["ACTIVO"] == True) & usuarios["CORREO"].notna(), "CORREO"  # noqa: E712
+            (usuarios["ACTIVO"] == True)  # noqa: E712
+            & usuarios["CORREO"].notna()
+            & (usuarios["PERFIL"].astype(str).str.strip().str.upper() == "OPERADOR"),
+            "CORREO"
         ].tolist()
         if not correos:
-            return "warning", "⚠️ No hay usuarios activos con correo para notificar la carga."
+            return "warning", "⚠️ No hay usuarios Operador activos con correo para notificar la carga."
 
         with st.spinner("Enviando el resumen de la carga por correo..."):
             enviados = enviar_resumen_carga(correos, resumen)
     except Exception as e:
         return "warning", f"⚠️ La carga se guardó, pero no fue posible enviar el resumen por correo: {e}"
 
-    return "info", f"📧 Resumen de la carga enviado en un solo correo a {enviados} usuario(s) activo(s)."
+    return "info", f"📧 Resumen de la carga enviado en un solo correo a {enviados} usuario(s) Operador activo(s)."
 
 
 def ejecutar_carga(archivo, hojas, notificar=False):
@@ -719,11 +722,11 @@ def ventana_confirmar_carga(archivo, preview, hojas):
     with st.form("form_confirmar_carga"):
         puede_notificar = configuracion_correo() is not None and obtener_cliente_admin() is not None
         notificar = st.checkbox(
-            "Enviar resumen por correo a los usuarios activos",
+            "Enviar resumen por correo a los usuarios Operador activos",
             value=puede_notificar,
             disabled=not puede_notificar,
             help=(
-                "Se envía un solo correo con el resumen general de la carga a todos los usuarios activos."
+                "Se envía un solo correo con el resumen general de la carga a los usuarios Operador activos."
                 if puede_notificar else
                 "Requiere la sección [email] y supabase.service_role_key en los secretos."
             )
