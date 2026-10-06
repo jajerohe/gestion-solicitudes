@@ -275,6 +275,13 @@ def mostrar_login():
 # CONTROL DE ACCESO
 # ============================================================
 
+# El botón circular de cerrar sesión del encabezado es un enlace a ?logout=1.
+if st.query_params.get("logout"):
+    cerrar_sesion()
+    for clave in ["auth_user_id","usuario_actual","perfil_actual","nombre_actual","email_actual","pagina_actual"]:
+        st.session_state.pop(clave,None)
+    st.query_params.clear()
+
 if "usuario_actual" not in st.session_state:
     mostrar_login()
     st.stop()
@@ -320,7 +327,7 @@ section[data-testid="stSidebar"]>div{padding:.8rem .8rem 1rem!important}
 .st-key-podex_menu div[data-testid="stButton"]>button p,.st-key-podex_menu_admin div[data-testid="stButton"]>button p{font-size:12px!important;font-weight:600!important;text-align:left!important}
 .st-key-podex_menu,.st-key-podex_menu_admin{gap:3px!important}
 .podex-topbar{background:#fff;border:1px solid #9ec91f;border-radius:8px;min-height:64px;padding:9px 16px;display:flex;align-items:center;justify-content:space-between;box-shadow:inset 0 3px 0 var(--lime);margin-bottom:12px}
-.podex-top-title{color:var(--dark);font-size:18px;font-weight:800}.podex-top-subtitle{color:#7b8582;font-size:10px;margin-top:2px}.podex-user-pill{background:#f1f6f4;border:1px solid #dce9e4;color:#28564d;border-radius:20px;padding:7px 12px;font-size:10px;font-weight:700}
+.podex-top-title{color:var(--dark);font-size:18px;font-weight:800}.podex-top-subtitle{color:#7b8582;font-size:10px;margin-top:2px}.podex-user-pill{background:#f1f6f4;border:1px solid #dce9e4;color:#28564d;border-radius:20px;padding:7px 12px;font-size:10px;font-weight:700}.podex-top-actions{display:flex;align-items:center;gap:10px}.podex-logout{width:36px;height:36px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:linear-gradient(160deg,#5cc285,#1aa0e0);box-shadow:0 2px 6px rgba(20,90,120,.25);transition:transform .15s,box-shadow .15s;text-decoration:none!important}.podex-logout:hover{transform:scale(1.08);box-shadow:0 3px 10px rgba(20,90,120,.35)}
 .podex-section-title{color:#16473e;font-size:15px;font-weight:800;margin:2px 0 5px}.podex-section-caption{color:#7b8582;font-size:10px;margin-bottom:8px}
 div[data-testid="stVerticalBlockBorderWrapper"]{border-color:var(--border)!important;border-radius:8px!important;background:#fff!important}
 div[data-testid="stFileUploader"]{background:#f7f9f8!important;border:1px dashed #b9c9c4!important;border-radius:7px!important}
@@ -366,12 +373,6 @@ with st.sidebar:
         opciones_menu.append(("cargar", "📥  Cargar solicitudes"))
     mostrar_menu("podex_menu", opciones_menu)
 
-    st.markdown('<div class="podex-menu-section">Sesión</div>',unsafe_allow_html=True)
-    if st.button("🚪 Cerrar sesión",use_container_width=True):
-        cerrar_sesion()
-        for clave in ["auth_user_id","usuario_actual","perfil_actual","nombre_actual","email_actual"]:
-            st.session_state.pop(clave,None)
-        st.rerun()
 
 # ============================================================
 # ENCABEZADO INTERNO
@@ -385,7 +386,8 @@ TITULOS_PAGINA = {
 st.markdown(f"""
 <div class="podex-topbar"><div><div class="podex-top-title">{TITULOS_PAGINA.get(pagina_actual, 'Gestión de Solicitudes')}</div>
 <div class="podex-top-subtitle">Sistema Integrado de Gestión de Peticiones, Incidentes y Vulnerabilidades · PODEX</div></div>
-<div class="podex-user-pill">👤 {nombre_actual or usuario_actual} · Usuario: {usuario_actual} · Perfil: {perfil_actual or 'Sin perfil'}</div></div>
+<div class="podex-top-actions"><div class="podex-user-pill">👤 {nombre_actual or usuario_actual} · Usuario: {usuario_actual} · Perfil: {perfil_actual or 'Sin perfil'}</div>
+<a class="podex-logout" href="?logout=1" target="_self" title="Cerrar sesión" aria-label="Cerrar sesión"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h3a1 1 0 0 1 1 1v3M18 16v3a1 1 0 0 1-1 1h-3"/><path d="M5 4.5 11 3a1 1 0 0 1 1.2 1v16a1 1 0 0 1-1.2 1L5 19.5z" fill="#fff"/><path d="M14.5 12H22M19 9l3 3-3 3"/></svg></a></div></div>
 """,unsafe_allow_html=True)
 
 st.markdown('<div style="height:8px"></div>',unsafe_allow_html=True)
