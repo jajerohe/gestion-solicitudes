@@ -1384,6 +1384,15 @@ st.markdown("""
     transform:scale(1.08);box-shadow:0 3px 10px rgba(20,90,120,.35)!important}
 .st-key-acciones_solicitud div[data-testid="stButton"] button:disabled{
     opacity:.35;transform:none;box-shadow:none!important}
+/* Un color por función con la paleta corporativa: Gestionar (registrar)
+   verde lima/verde, Ver gestión (consultar) azul, Actualizar (cambiar
+   estado / cerrar) amarillo/naranja. */
+.st-key-btn_gestionar div[data-testid="stButton"] button{
+    background:linear-gradient(160deg,#CCD32A,#004236)!important}
+.st-key-btn_ver_gestion div[data-testid="stButton"] button{
+    background:linear-gradient(160deg,#2f6db5,#00214D)!important}
+.st-key-btn_actualizar div[data-testid="stButton"] button{
+    background:linear-gradient(160deg,#F7DB17,#FF5F00)!important}
 .st-key-acciones_solicitud div[data-testid="stButton"] button span{
     color:#fff!important;font-size:20px!important;margin:0!important}
 </style>
