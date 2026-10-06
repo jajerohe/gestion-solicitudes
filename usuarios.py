@@ -222,7 +222,9 @@ def ventana_crear_usuario(perfiles, pods_df):
             help="El perfil Operador solo verá las solicitudes de estos PODs."
         )
 
-        crear = st.form_submit_button("💾 Crear usuario", type="primary")
+        with st.container(key="acciones_dlg_crear", horizontal=True,
+                          horizontal_alignment="right", gap="small"):
+            crear = st.form_submit_button("", icon=":material/person_add:", key="btn_ok_crear", help="Crear usuario")
 
     if not crear:
         return
@@ -317,7 +319,9 @@ def ventana_editar_usuario(fila, perfiles, pods_df, usuario_actual):
             format_func=etiqueta_pod(pods_df)
         )
 
-        guardar = st.form_submit_button("💾 Guardar cambios", type="primary")
+        with st.container(key="acciones_dlg_editar", horizontal=True,
+                          horizontal_alignment="right", gap="small"):
+            guardar = st.form_submit_button("", icon=":material/save:", key="btn_info_editar", help="Guardar cambios")
 
     if not guardar:
         return
@@ -376,7 +380,9 @@ def ventana_contrasena(fila):
             contrasena = st.text_input("Nueva contraseña", type="password")
         with c2:
             confirmacion = st.text_input("Confirmar contraseña", type="password")
-        cambiar = st.form_submit_button("🔑 Cambiar contraseña", type="primary")
+        with st.container(key="acciones_dlg_clave", horizontal=True,
+                          horizontal_alignment="right", gap="small"):
+            cambiar = st.form_submit_button("", icon=":material/key:", key="btn_neutral_clave", help="Cambiar contraseña")
 
     if not cambiar:
         return
@@ -409,13 +415,10 @@ def ventana_estado(fila):
     st.markdown(f"### ❓ ¿Está seguro que desea {accion} este usuario?")
 
     with st.form(f"form_estado_{fila['USUARIO']}"):
-        c_si, c_no = st.columns(2)
-        with c_si:
-            confirmar = st.form_submit_button(
-                f"✅ Sí, {accion}", type="primary", use_container_width=True
-            )
-        with c_no:
-            cancelar = st.form_submit_button("❌ Cancelar", use_container_width=True)
+        with st.container(key="acciones_dlg_estado", horizontal=True,
+                          horizontal_alignment="right", gap="small"):
+            cancelar = st.form_submit_button("", icon=":material/close:", key="btn_cancel_estado", help="Cancelar")
+            confirmar = st.form_submit_button("", icon=":material/check:", key="btn_warn_estado", help=f"Sí, {accion}")
 
     if cancelar:
         st.rerun()
@@ -447,13 +450,10 @@ def ventana_eliminar(fila):
     st.markdown("### ❓ ¿Está seguro que desea eliminar este usuario?")
 
     with st.form(f"form_eliminar_{fila['USUARIO']}"):
-        c_si, c_no = st.columns(2)
-        with c_si:
-            confirmar = st.form_submit_button(
-                "✅ Sí, eliminar", type="primary", use_container_width=True
-            )
-        with c_no:
-            cancelar = st.form_submit_button("❌ Cancelar", use_container_width=True)
+        with st.container(key="acciones_dlg_eliminar", horizontal=True,
+                          horizontal_alignment="right", gap="small"):
+            cancelar = st.form_submit_button("", icon=":material/close:", key="btn_cancel_eliminar", help="Cancelar")
+            confirmar = st.form_submit_button("", icon=":material/delete:", key="btn_danger_eliminar", help="Sí, eliminar")
 
     if cancelar:
         st.rerun()

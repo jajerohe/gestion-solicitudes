@@ -338,15 +338,20 @@ div[data-testid="stAlert"]{border-radius:7px!important}
 span[data-baseweb="tag"],[data-testid="stMultiSelectTagsContainer"] span[data-tag]{background:var(--dark)!important}
 /* Botones circulares de acción (contenedores con key "acciones_*").
    Un color de la paleta corporativa por función. */
-[class*="st-key-acciones_"] div[data-testid="stButton"] button{width:40px!important;height:40px!important;min-height:40px!important;padding:0!important;border-radius:50%!important;border:none!important;background:linear-gradient(160deg,#2f6db5,#00214D)!important;box-shadow:0 2px 6px rgba(20,60,90,.25)!important;transition:transform .15s,box-shadow .15s}
-[class*="st-key-acciones_"] div[data-testid="stButton"] button:hover{transform:scale(1.08);box-shadow:0 3px 10px rgba(20,60,90,.35)!important}
-[class*="st-key-acciones_"] div[data-testid="stButton"] button:disabled{opacity:.35;transform:none;box-shadow:none!important}
-[class*="st-key-acciones_"] div[data-testid="stButton"] button span{color:#fff!important;font-size:20px!important;margin:0!important}
+[class*="st-key-acciones_"] div[data-testid="stButton"] button,[class*="st-key-acciones_"] div[data-testid="stFormSubmitButton"] button{width:40px!important;height:40px!important;min-height:40px!important;padding:0!important;border-radius:50%!important;border:none!important;background:linear-gradient(160deg,#2f6db5,#00214D)!important;box-shadow:0 2px 6px rgba(20,60,90,.25)!important;transition:transform .15s,box-shadow .15s}
+[class*="st-key-acciones_"] div[data-testid="stButton"] button:hover,[class*="st-key-acciones_"] div[data-testid="stFormSubmitButton"] button:hover{transform:scale(1.08);box-shadow:0 3px 10px rgba(20,60,90,.35)!important}
+[class*="st-key-acciones_"] div[data-testid="stButton"] button:disabled,[class*="st-key-acciones_"] div[data-testid="stFormSubmitButton"] button:disabled{opacity:.35;transform:none;box-shadow:none!important}
+[class*="st-key-acciones_"] div[data-testid="stButton"] button span,[class*="st-key-acciones_"] div[data-testid="stFormSubmitButton"] button span{color:#fff!important;font-size:20px!important;margin:0!important}
 .st-key-btn_gestionar div[data-testid="stButton"] button,.st-key-btn_usr_nuevo div[data-testid="stButton"] button,.st-key-btn_cargar div[data-testid="stButton"] button{background:linear-gradient(160deg,#CCD32A,#004236)!important}
 .st-key-btn_ver_gestion div[data-testid="stButton"] button,.st-key-btn_usr_editar div[data-testid="stButton"] button{background:linear-gradient(160deg,#2f6db5,#00214D)!important}
 .st-key-btn_actualizar div[data-testid="stButton"] button,.st-key-btn_usr_estado div[data-testid="stButton"] button{background:linear-gradient(160deg,#F7DB17,#FF5F00)!important}
 .st-key-btn_usr_clave div[data-testid="stButton"] button{background:linear-gradient(160deg,#C3C5C6,#403833)!important}
 .st-key-btn_usr_eliminar div[data-testid="stButton"] button{background:linear-gradient(160deg,#FF5F00,#8a2c00)!important}
+[class*="st-key-btn_ok_"] div[data-testid="stFormSubmitButton"] button{background:linear-gradient(160deg,#CCD32A,#004236)!important}
+[class*="st-key-btn_info_"] div[data-testid="stFormSubmitButton"] button{background:linear-gradient(160deg,#2f6db5,#00214D)!important}
+[class*="st-key-btn_warn_"] div[data-testid="stFormSubmitButton"] button{background:linear-gradient(160deg,#F7DB17,#FF5F00)!important}
+[class*="st-key-btn_neutral_"] div[data-testid="stFormSubmitButton"] button,[class*="st-key-btn_cancel_"] div[data-testid="stFormSubmitButton"] button{background:linear-gradient(160deg,#C3C5C6,#403833)!important}
+[class*="st-key-btn_danger_"] div[data-testid="stFormSubmitButton"] button{background:linear-gradient(160deg,#FF5F00,#8a2c00)!important}
 .tabla-header{color:#356158!important;font-size:10px!important;font-weight:800!important;text-transform:uppercase;letter-spacing:.2px;line-height:1.1!important;white-space:nowrap;padding:0!important}.tabla-cell{color:#40514d!important;font-size:10px!important;line-height:1.15!important;min-height:24px!important;padding:5px 3px!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-bottom:1px solid #edf0ef}div[data-testid="column"]{padding-top:0!important;padding-bottom:0!important}
 div[data-testid="stButton"]>button{border-radius:6px!important;min-height:27px!important;height:27px!important;padding:0 7px!important;font-size:11px!important;color:var(--dark)!important;border:1px solid #cfe0db!important;background:#f5f9f7!important}div[data-testid="stButton"]>button:hover{background:#e8f2ee!important;border-color:#9fc3b8!important}
 div[data-testid="stFormSubmitButton"]>button{border-radius:6px!important;min-height:32px!important;font-weight:700!important}hr{margin:8px 0!important;border-color:#e3e8e6!important}
@@ -665,18 +670,10 @@ def ventana_confirmar_carga(archivo, preview, product_owners):
     st.markdown("### ❓ ¿Está seguro que desea cargar estas solicitudes?")
 
     with st.form("form_confirmar_carga"):
-        c_si, c_no = st.columns(2)
-        with c_si:
-            confirmar = st.form_submit_button(
-                "✅ Sí, cargar solicitudes",
-                type="primary",
-                use_container_width=True
-            )
-        with c_no:
-            cancelar = st.form_submit_button(
-                "❌ Cancelar",
-                use_container_width=True
-            )
+        with st.container(key="acciones_dlg_carga", horizontal=True,
+                          horizontal_alignment="right", gap="small"):
+            cancelar = st.form_submit_button("", icon=":material/close:", key="btn_cancel_carga", help="Cancelar")
+            confirmar = st.form_submit_button("", icon=":material/upload:", key="btn_ok_carga", help="Sí, cargar solicitudes")
 
     if cancelar:
         st.rerun()
@@ -867,10 +864,9 @@ def ventana_gestion(id_solicitud):
             height=130
         )
 
-        guardar = st.form_submit_button(
-            "💾 Guardar Gestión",
-            use_container_width=False
-        )
+        with st.container(key="acciones_dlg_gestion", horizontal=True,
+                          horizontal_alignment="right", gap="small"):
+            guardar = st.form_submit_button("", icon=":material/save:", key="btn_ok_gestion", help="Guardar gestión")
 
     if guardar:
 
@@ -1211,10 +1207,9 @@ def ventana_actualizar(id_solicitud):
                     key=f"hora_cierre_{id_solicitud}"
                 )
 
-            actualizar = st.form_submit_button(
-                "🔄 Actualizar Solicitud",
-                use_container_width=False
-            )
+            with st.container(key="acciones_dlg_actualizar", horizontal=True,
+                              horizontal_alignment="right", gap="small"):
+                actualizar = st.form_submit_button("", icon=":material/edit_document:", key="btn_warn_actualizar", help="Actualizar solicitud")
 
     if actualizar:
 
