@@ -21,6 +21,7 @@ import streamlit as st
 from supabase import create_client, Client
 
 from database import Database
+from correo import configuracion_correo, enviar_correo_bienvenida
 
 # Duración usada para desactivar una cuenta en Supabase Auth (~100 años).
 DURACION_DESACTIVACION = "876000h"
@@ -60,6 +61,20 @@ def obtener_perfiles():
         db.conectar()
         db.execute('SELECT "PERFIL" FROM public."PERFILES" ORDER BY "PERFIL"')
         return [fila[0] for fila in db.fetchall()]
+    finally:
+        db.cerrar()
+
+
+def obtener_descripcion_perfil(perfil):
+    """Descripción del perfil en la tabla PERFILES (None si no tiene)."""
+    db = Database()
+    try:
+        db.conectar()
+        db.execute('SELECT "DESCRIPCION" FROM public."PERFILES" WHERE "PERFIL" = %s', (perfil,))
+        fila = db.fetchone()
+        return fila[0] if fila and fila[0] else None
+    except Exception:
+        return None
     finally:
         db.cerrar()
 
@@ -207,9 +222,9 @@ def guardar_pods(db, usuario, pods):
         )
 
 
-def notificar(mensaje):
+def notificar(mensaje, tipo="success"):
     """Guarda un mensaje para mostrarlo después del st.rerun()."""
-    st.session_state["mensaje_usuarios"] = mensaje
+    st.session_state["mensaje_usuarios"] = (tipo, mensaje)
     st.rerun()
 
 
@@ -254,6 +269,19 @@ def ventana_crear_usuario(perfiles, pods_df):
             pods_df["ID_POD"].tolist(),
             format_func=etiqueta_pod(pods_df),
             help="El perfil Operador solo verá las solicitudes de estos PODs."
+        )
+
+        correo_configurado = configuracion_correo() is not None
+        enviar_bienvenida = st.checkbox(
+            "Enviar correo de bienvenida con los datos de acceso",
+            value=correo_configurado,
+            disabled=not correo_configurado,
+            help=(
+                "Se envía al correo registrado: dirección de acceso, usuario, perfil, "
+                "PODs, contraseña temporal y procedimiento de ingreso."
+                if correo_configurado else
+                "Configure la sección [email] en los secretos de la aplicación para habilitar el envío."
+            )
         )
 
         with st.container(key="acciones_dlg_crear", horizontal=True,
@@ -315,7 +343,30 @@ def ventana_crear_usuario(perfiles, pods_df):
     finally:
         db.cerrar()
 
-    notificar(f"✅ Usuario {usuario} creado correctamente.")
+    if not enviar_bienvenida:
+        notificar(f"✅ Usuario {usuario} creado correctamente.")
+
+    # El usuario ya quedó creado; un fallo en el correo solo genera un aviso.
+    try:
+        nombres_pods = dict(zip(pods_df["ID_POD"], pods_df["NOMBRE"]))
+        with st.spinner("Enviando correo de bienvenida..."):
+            enviar_correo_bienvenida(
+                nombre=nombre,
+                usuario=usuario,
+                correo=correo,
+                perfil=perfil,
+                pods=[(p, nombres_pods.get(p, "")) for p in pods],
+                contrasena=contrasena,
+                descripcion_perfil=obtener_descripcion_perfil(perfil),
+            )
+    except Exception as e:
+        notificar(
+            f"✅ Usuario {usuario} creado correctamente, pero no fue posible enviar "
+            f"el correo de bienvenida a {correo}: {e}",
+            tipo="warning"
+        )
+
+    notificar(f"✅ Usuario {usuario} creado correctamente. Se envió el correo de bienvenida a {correo}.")
 
 
 @st.dialog(" ", width="large")
@@ -532,7 +583,8 @@ def mostrar_modulo_usuarios(usuario_actual):
 
     mensaje = st.session_state.pop("mensaje_usuarios", None)
     if mensaje:
-        st.success(mensaje)
+        tipo, texto = mensaje
+        (st.warning if tipo == "warning" else st.success)(texto)
 
     if obtener_cliente_admin() is None:
         st.warning(
