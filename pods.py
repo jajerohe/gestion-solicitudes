@@ -23,7 +23,7 @@ PATRON_ID_POD = re.compile(r"^[A-Z0-9_-]{1,10}$")
 # CONSULTAS
 # ============================================================
 def obtener_pods_detalle():
-    """PODs con sus usuarios asignados y el número de solicitudes abiertas."""
+    """PODs con el número de solicitudes abiertas de cada uno."""
     db = Database()
     try:
         db.conectar()
@@ -31,12 +31,6 @@ def obtener_pods_detalle():
             SELECT
                 p."ID_POD",
                 p."NOMBRE",
-                COALESCE(
-                    (SELECT ARRAY_AGG(up."USUARIO" ORDER BY up."USUARIO")
-                     FROM public."USUARIOS_PODS" up
-                     WHERE up."ID_POD" = p."ID_POD"),
-                    ARRAY[]::varchar[]
-                ) AS "USUARIOS",
                 (SELECT COUNT(*)
                  FROM public."SOLICITUDES" s
                  WHERE UPPER(TRIM(s."PRODUCT_OWNER")) = UPPER(TRIM(p."NOMBRE"))
@@ -47,7 +41,7 @@ def obtener_pods_detalle():
         ''')
         return pd.DataFrame(
             db.fetchall(),
-            columns=["ID_POD", "NOMBRE", "USUARIOS", "ABIERTAS"]
+            columns=["ID_POD", "NOMBRE", "ABIERTAS"]
         )
     finally:
         db.cerrar()
@@ -140,21 +134,12 @@ def ventana_editar_pod(fila, pods_df):
     encabezado_ventana("Editar POD")
     ficha([
         ("ID del POD", fila["ID_POD"]),
-        ("Usuarios con este POD", ", ".join(fila["USUARIOS"]) or "—"),
+        ("Product Owner actual", fila["NOMBRE"]),
         ("Solicitudes abiertas", int(fila["ABIERTAS"])),
     ])
 
     with st.form(f"form_editar_pod_{fila['ID_POD']}"):
         nombre = st.text_input("Product Owner", value=fila["NOMBRE"])
-
-        actualizar_solicitudes = st.checkbox(
-            "Si cambia el nombre, actualizar también el Product Owner de las solicitudes existentes",
-            value=True,
-            help=(
-                "Las solicitudes se asocian al POD por el nombre del Product Owner. "
-                "Si no se actualizan, las solicitudes actuales dejarán de verse en este POD."
-            )
-        )
 
         with st.container(key="acciones_dlg_editar_pod", horizontal=True,
                           horizontal_alignment="right", gap="small"):
@@ -165,7 +150,6 @@ def ventana_editar_pod(fila, pods_df):
         return
 
     nombre = normalizar_product_owner(nombre)
-    nombre_anterior = fila["NOMBRE"]
 
     if not nombre:
         st.error("❌ Debe ingresar el nombre del Product Owner.")
@@ -176,8 +160,6 @@ def ventana_editar_pod(fila, pods_df):
         st.error(f"❌ Ya existe otro POD para el Product Owner {nombre}.")
         return
 
-    cambio_nombre = nombre != normalizar_product_owner(nombre_anterior)
-
     db = Database()
     try:
         db.conectar()
@@ -185,12 +167,6 @@ def ventana_editar_pod(fila, pods_df):
             'UPDATE public."PODS" SET "NOMBRE" = %s WHERE "ID_POD" = %s',
             (nombre, fila["ID_POD"])
         )
-        if cambio_nombre and actualizar_solicitudes:
-            db.execute(
-                '''UPDATE public."SOLICITUDES" SET "PRODUCT_OWNER" = %s
-                   WHERE UPPER(TRIM("PRODUCT_OWNER")) = UPPER(TRIM(%s))''',
-                (nombre, nombre_anterior)
-            )
         db.commit()
     except Exception as e:
         db.rollback()
@@ -209,7 +185,7 @@ def ventana_eliminar_pod(fila):
     ficha([
         ("ID del POD", fila["ID_POD"]),
         ("Product Owner", fila["NOMBRE"]),
-        ("Usuarios con este POD", ", ".join(fila["USUARIOS"]) or "—"),
+        ("Solicitudes abiertas", int(fila["ABIERTAS"])),
     ])
 
     abiertas = int(fila["ABIERTAS"])
@@ -270,7 +246,7 @@ def mostrar_modulo_pods():
 
     texto = st.text_input(
         "🔎 Buscar POD",
-        placeholder="Digite ID, Product Owner o usuario..."
+        placeholder="Digite ID o Product Owner..."
     )
 
     todos = pods
@@ -278,7 +254,7 @@ def mostrar_modulo_pods():
         texto_busqueda = texto.lower()
         mascara = pods.apply(
             lambda f: texto_busqueda in " ".join(
-                [str(f["ID_POD"]), str(f["NOMBRE"]), *f["USUARIOS"]]
+                [str(f["ID_POD"]), str(f["NOMBRE"])]
             ).lower(),
             axis=1
         )
@@ -317,7 +293,6 @@ def mostrar_modulo_pods():
     tabla = pd.DataFrame({
         "ID_POD": pods["ID_POD"],
         "PRODUCT_OWNER": pods["NOMBRE"],
-        "USUARIOS": pods["USUARIOS"].map(lambda u: ", ".join(u) or "—"),
         "SOLICITUDES_ABIERTAS": pods["ABIERTAS"].astype(int),
     })
 
@@ -334,9 +309,6 @@ def mostrar_modulo_pods():
         column_config={
             "ID_POD": st.column_config.TextColumn("ID_POD", width="small"),
             "PRODUCT_OWNER": st.column_config.TextColumn("PRODUCT_OWNER", width="large"),
-            "USUARIOS": st.column_config.TextColumn(
-                "USUARIOS", width="medium",
-                help="Usuarios que tienen este POD asignado (se gestiona en el módulo Usuarios)."),
             "SOLICITUDES_ABIERTAS": st.column_config.NumberColumn("SOLICITUDES_ABIERTAS", width="small"),
         },
     )
