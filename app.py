@@ -1149,18 +1149,29 @@ def ventana_actualizar(id_solicitud):
             db.execute(
                 """
                 UPDATE public."SOLICITUDES"
-                SET "FECHA_CIERRE" = CAST(%s AS timestamp without time zone),
-                    "STATUS" = %s,
-                    "CODIGO_CIERRE" = %s
-                WHERE "ID_SOLICITUD" = %s
+                SET "FECHA_CIERRE" = CAST(%(fecha_cierre)s AS timestamp without time zone),
+                    "STATUS" = %(status)s,
+                    "CODIGO_CIERRE" = %(codigo)s,
+                    -- Al cerrar se registra quién y cuándo (hora de Bogotá)
+                    -- lo hizo en PODEX; si se quita el cierre, se limpian.
+                    "USUARIO_CIERRE" = CASE
+                        WHEN %(codigo)s::varchar IS NULL THEN NULL
+                        ELSE %(usuario)s::varchar
+                    END,
+                    "FECHA_REGISTRO_CIERRE" = CASE
+                        WHEN %(codigo)s::varchar IS NULL THEN NULL
+                        ELSE now() AT TIME ZONE 'America/Bogota'
+                    END
+                WHERE "ID_SOLICITUD" = %(id_solicitud)s
                 RETURNING "FECHA_CIERRE"
                 """,
-                (
-                    fecha_cierre_db,
-                    nuevo_status or None,
-                    nuevo_codigo or None,
-                    id_solicitud
-                )
+                {
+                    "fecha_cierre": fecha_cierre_db,
+                    "status": nuevo_status or None,
+                    "codigo": nuevo_codigo or None,
+                    "usuario": usuario_actual,
+                    "id_solicitud": id_solicitud,
+                }
             )
 
             fecha_cierre_guardada = db.fetchone()[0]
