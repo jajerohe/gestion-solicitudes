@@ -12,7 +12,7 @@ from usuarios import (
     mostrar_modulo_usuarios, encabezado_ventana, ficha, seccion, obtener_pods,
     obtener_usuarios, obtener_cliente_admin
 )
-from correo import configuracion_correo, enviar_resumen_carga
+from correo import configuracion_correo, enviar_correo_backlog
 from pods import mostrar_modulo_pods
 
 # Tiempo máximo (segundos) que se reutilizan los datos consultados entre
@@ -578,37 +578,30 @@ def leer_hojas_cacheadas(contenido, product_owners):
     return leer_hojas(io.BytesIO(contenido), product_owners)
 
 
-def resumen_carga(archivo, hojas, resultado):
-    """Resumen de la carga para el correo a los usuarios activos."""
-    conteo = {}
-    for _, df in hojas:
-        for po, cantidad in df["PRODUCT_OWNER"].value_counts().items():
-            conteo[po] = conteo.get(po, 0) + int(cantidad)
-
-    pods = obtener_pods()
-    id_por_nombre = {normalizar_product_owner(n): i for i, n in zip(pods["ID_POD"], pods["NOMBRE"])}
-    por_pod = sorted(
-        ((id_por_nombre.get(po, "—"), po, c) for po, c in conteo.items()),
-        key=lambda x: str(x[0])
-    )
-    por_hoja = {hoja: len(df) for hoja, df in hojas}
+def resumen_carga(hojas):
+    """Datos del correo de backlog: (Product Owner, TIPO, RANGTIEMPO) de las
+    solicitudes cargadas, separados por hoja."""
+    registros = {}
+    for hoja, df in hojas:
+        columnas = [c for c in ("PRODUCT_OWNER", "TIPO", "RANGTIEMPO") if c in df.columns]
+        datos = df[columnas].copy()
+        for c in ("TIPO", "RANGTIEMPO"):
+            datos[c] = (datos[c].fillna("Sin dato").astype(str).str.strip()
+                        if c in datos.columns else "Sin dato")
+        datos["TIPO"] = datos["TIPO"].str.upper()
+        registros[hoja] = list(datos[["PRODUCT_OWNER", "TIPO", "RANGTIEMPO"]].itertuples(index=False, name=None))
 
     return {
-        "archivo": archivo.name,
-        "fecha": datetime.now(ZoneInfo("America/Bogota")).strftime("%Y-%m-%d %H:%M:%S"),
+        "fecha": datetime.now(ZoneInfo("America/Bogota")).strftime("%d%m%Y"),
         "usuario_carga": nombre_actual or usuario_actual,
-        "total": sum(por_hoja.values()),
-        "generales_hoja": por_hoja.get("DETALLE_GENERAL", 0),
-        "funcionales_hoja": por_hoja.get("DETALLE_FUNCIONALES", 0),
-        "procesadas": int(resultado.get("generales", 0)) + int(resultado.get("funcionales", 0)),
-        "sin_cambios": int(resultado.get("duplicados", 0)),
-        "por_pod": por_pod,
+        "general": registros.get("DETALLE_GENERAL", []),
+        "funcional": registros.get("DETALLE_FUNCIONALES", []),
     }
 
 
-def notificar_carga(resumen):
-    """Envía un solo correo con el resumen general de la carga a los
-    usuarios activos de perfil Operador. Devuelve (tipo, mensaje)."""
+def notificar_carga(resumen, archivo_bytes):
+    """Envía un solo correo de backlog (con el Excel adjunto) a los usuarios
+    activos de perfil Operador. Devuelve (tipo, mensaje)."""
     try:
         usuarios = obtener_usuarios()
         correos = usuarios.loc[
@@ -621,11 +614,11 @@ def notificar_carga(resumen):
             return "warning", "⚠️ No hay usuarios Operador activos con correo para notificar la carga."
 
         with st.spinner("Enviando el resumen de la carga por correo..."):
-            enviados = enviar_resumen_carga(correos, resumen)
+            enviados = enviar_correo_backlog(correos, resumen, archivo_bytes)
     except Exception as e:
         return "warning", f"⚠️ La carga se guardó, pero no fue posible enviar el resumen por correo: {e}"
 
-    return "info", f"📧 Resumen de la carga enviado en un solo correo a {enviados} usuario(s) Operador activo(s)."
+    return "info", f"📧 Correo de backlog ({resumen['fecha']} - Backlog) enviado a {enviados} usuario(s) Operador activo(s)."
 
 
 def ejecutar_carga(archivo, hojas, notificar=False):
@@ -682,7 +675,7 @@ def ejecutar_carga(archivo, hojas, notificar=False):
         # El correo es informativo: si falla, la carga ya quedó guardada.
         if notificar:
             st.session_state["resultado_carga"]["correo"] = notificar_carga(
-                resumen_carga(archivo, hojas, resultado)
+                resumen_carga(hojas), archivo.getvalue()
             )
 
         # Limpia el archivo seleccionado para evitar cargarlo dos veces.
@@ -722,11 +715,11 @@ def ventana_confirmar_carga(archivo, preview, hojas):
     with st.form("form_confirmar_carga"):
         puede_notificar = configuracion_correo() is not None and obtener_cliente_admin() is not None
         notificar = st.checkbox(
-            "Enviar resumen por correo a los usuarios Operador activos",
+            "Enviar correo de backlog a los usuarios Operador activos",
             value=puede_notificar,
             disabled=not puede_notificar,
             help=(
-                "Se envía un solo correo con el resumen general de la carga a los usuarios Operador activos."
+                "Se envía un solo correo con las tablas del backlog y el Excel adjunto a los usuarios Operador activos."
                 if puede_notificar else
                 "Requiere la sección [email] y supabase.service_role_key en los secretos."
             )
