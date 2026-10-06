@@ -166,6 +166,17 @@ def etiqueta_pod(pods_df):
     return lambda id_pod: f"{id_pod} · {nombres.get(id_pod, '')}"
 
 
+def encabezado_ventana(titulo):
+    """Encabezado de las ventanas con el mismo estilo del encabezado de página."""
+    st.markdown(
+        f'''<div class="podex-topbar podex-dialog-header"><div>
+        <div class="podex-top-title">{titulo}</div>
+        <div class="podex-top-subtitle">Sistema Integrado de Gestión de Peticiones, Incidentes y Vulnerabilidades · PODEX</div>
+        </div></div>''',
+        unsafe_allow_html=True
+    )
+
+
 def guardar_pods(db, usuario, pods):
     db.execute('DELETE FROM public."USUARIOS_PODS" WHERE "USUARIO" = %s', (usuario,))
     for id_pod in pods:
@@ -184,8 +195,10 @@ def notificar(mensaje):
 # ============================================================
 # VENTANAS (OVERLAY)
 # ============================================================
-@st.dialog("➕ Nuevo usuario", width="large")
+@st.dialog(" ", width="large")
 def ventana_crear_usuario(perfiles, pods_df):
+
+    encabezado_ventana("Nuevo Usuario")
 
     with st.form("form_crear_usuario"):
         c1, c2 = st.columns(2)
@@ -284,8 +297,10 @@ def ventana_crear_usuario(perfiles, pods_df):
     notificar(f"✅ Usuario {usuario} creado correctamente.")
 
 
-@st.dialog("✏️ Editar usuario", width="large")
+@st.dialog(" ", width="large")
 def ventana_editar_usuario(fila, perfiles, pods_df, usuario_actual):
+
+    encabezado_ventana("Editar Usuario")
 
     es_mismo_usuario = fila["USUARIO"] == usuario_actual
     tiene_cuenta = bool(fila["AUTH_USER_ID"])
@@ -369,8 +384,10 @@ def ventana_editar_usuario(fila, perfiles, pods_df, usuario_actual):
     notificar(f"✅ Usuario {fila['USUARIO']} actualizado correctamente.")
 
 
-@st.dialog("🔑 Cambiar contraseña", width="large")
+@st.dialog(" ", width="large")
 def ventana_contrasena(fila):
+
+    encabezado_ventana("Cambiar Contraseña")
 
     st.markdown(f"### 👤 {fila['USUARIO']} · {fila['NOMBRE']}")
 
@@ -403,8 +420,10 @@ def ventana_contrasena(fila):
     notificar(f"✅ Contraseña de {fila['USUARIO']} actualizada correctamente.")
 
 
-@st.dialog("⚙️ Cambiar estado del usuario", width="large")
+@st.dialog(" ", width="large")
 def ventana_estado(fila):
+
+    encabezado_ventana("Cambiar Estado del Usuario")
 
     activar = not fila["ACTIVO"]
     accion = "activar" if activar else "desactivar"
@@ -438,8 +457,10 @@ def ventana_estado(fila):
     notificar(f"✅ Usuario {fila['USUARIO']} {estado} correctamente.")
 
 
-@st.dialog("🗑️ Eliminar usuario", width="large")
+@st.dialog(" ", width="large")
 def ventana_eliminar(fila):
+
+    encabezado_ventana("Eliminar Usuario")
 
     st.markdown(f"### 👤 {fila['USUARIO']} · {fila['NOMBRE']}")
     st.caption(
