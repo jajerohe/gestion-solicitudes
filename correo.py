@@ -26,6 +26,8 @@ from pathlib import Path
 
 import streamlit as st
 
+from excel_web import ORDEN_RANGOS, _orden_rango, calcular_tabla_jdu
+
 NOMBRE_SISTEMA = "PODEX"
 DESCRIPCION_SISTEMA = "Sistema Integrado de Gestión de Peticiones, Incidentes y Vulnerabilidades"
 APP_URL_DEFECTO = "https://podexweb.streamlit.app"
@@ -275,7 +277,6 @@ def _servidor_smtp(config):
 # CORREO DE BACKLOG DESPUÉS DE CADA CARGA
 # ============================================================
 
-ORDEN_RANGOS = ["0-5 días", "6-10 días", "11-20 días", ">20 días"]
 
 # Colores de la tabla dinámica con la paleta corporativa del sistema.
 VERDE_TOTAL = "#eef4e6"      # columnas de total por tipo
@@ -301,38 +302,11 @@ def nombre_backlog(nombre_archivo):
     return base if base.lower().endswith("backlog") else f"{base} - Backlog"
 
 
-def _orden_rango(rango):
-    return ORDEN_RANGOS.index(rango) if rango in ORDEN_RANGOS else len(ORDEN_RANGOS)
-
-
 def _tabla_dinamica(registros):
     """Tabla dinámica HTML: Product Owner por filas; TIPO x RANGTIEMPO por
     columnas, con totales por tipo y total general (como en Excel), con los
     colores del sistema. registros: [(product_owner, tipo, rango), ...]."""
-    conteo, tipos = {}, {}
-    for po, tipo, rango in registros:
-        conteo[(po, tipo, rango)] = conteo.get((po, tipo, rango), 0) + 1
-        tipos.setdefault(tipo, set()).add(rango)
-
-    tipos = {t: sorted(r, key=_orden_rango) for t, r in sorted(tipos.items())}
-    total_po, mas_5_dias = {}, {}
-    for (po, _, rango), c in conteo.items():
-        total_po[po] = total_po.get(po, 0) + c
-        if rango in ORDEN_RANGOS[1:]:      # 6-10, 11-20 y >20 días
-            mas_5_dias[po] = mas_5_dias.get(po, 0) + c
-
-    # Orden de los POD: primero los que tienen solicitudes de más de 5 días
-    # (de mayor a menor por esa cantidad y luego por el total); después los
-    # demás, de mayor a menor por el total. Empates: orden alfabético.
-    filas = sorted(
-        total_po,
-        key=lambda po: (
-            0 if mas_5_dias.get(po) else 1,
-            -mas_5_dias.get(po, 0),
-            -total_po[po],
-            po,
-        )
-    )
+    conteo, tipos, filas, total_po = calcular_tabla_jdu(registros)
 
     celda = (f"font-family:'Segoe UI',Arial,sans-serif;font-size:12px;color:#17342f;"
              f"padding:6px 8px;border-bottom:1px solid {BORDE};white-space:nowrap;")
