@@ -6,7 +6,9 @@ import pandas as pd
 import streamlit as st
 
 from database import Database
-from excel_web import analizar_excel, cargar_excel, leer_hojas, normalizar_product_owner
+from excel_web import (
+    analizar_excel, cargar_excel, leer_hojas, normalizar_product_owner, filtrar_adjunto
+)
 from auth import iniciar_sesion, cerrar_sesion
 from usuarios import (
     mostrar_modulo_usuarios, encabezado_ventana, ficha, seccion, obtener_pods,
@@ -613,11 +615,24 @@ def notificar_carga(resumen, archivo_bytes):
         if not correos:
             return "warning", "⚠️ No hay usuarios Operador activos con correo para notificar la carga."
 
+        # El adjunto lleva aplicado el filtro de PRODUCT_OWNER con los PODS
+        # registrados; si no se puede filtrar, se envía el archivo original.
+        aviso_adjunto = ""
+        try:
+            with st.spinner("Preparando el adjunto con el filtro de PODS..."):
+                adjunto = filtrar_adjunto(archivo_bytes, obtener_pods()["NOMBRE"].dropna().tolist())
+        except Exception as e:
+            adjunto = archivo_bytes
+            aviso_adjunto = f" No fue posible aplicar el filtro de PODS al adjunto ({e}); se envió el archivo original."
+
         with st.spinner("Enviando el resumen de la carga por correo..."):
-            enviados = enviar_correo_backlog(correos, resumen, archivo_bytes)
+            enviados = enviar_correo_backlog(correos, resumen, adjunto)
     except Exception as e:
         return "warning", f"⚠️ La carga se guardó, pero no fue posible enviar el resumen por correo: {e}"
 
+    if aviso_adjunto:
+        return "warning", (f"⚠️ Correo de backlog ({nombre_backlog(resumen['archivo'])}) enviado a "
+                           f"{enviados} usuario(s) Operador activo(s).{aviso_adjunto}")
     return "info", f"📧 Correo de backlog ({nombre_backlog(resumen['archivo'])}) enviado a {enviados} usuario(s) Operador activo(s)."
 
 

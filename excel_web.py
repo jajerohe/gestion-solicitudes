@@ -185,3 +185,71 @@ def cargar_excel(hojas, db):
                 resultado["duplicados"] += 1
 
     return resultado
+
+def filtrar_adjunto(contenido, product_owners):
+    """Devuelve una copia del Excel con el filtro de Excel aplicado en
+    PRODUCT_OWNER de DETALLE_GENERAL y DETALLE_FUNCIONALES, dejando visibles
+    solo los Product Owner recibidos (los NOMBRE de la tabla PODS).
+
+    Las demás hojas, el formato y los datos se conservan: las filas de otros
+    Product Owner solo quedan ocultas por el filtro, como al filtrar a mano.
+    """
+    import io
+    from openpyxl import load_workbook
+    from openpyxl.utils import get_column_letter
+
+    permitidos = {normalizar_product_owner(po) for po in product_owners}
+    libro = load_workbook(io.BytesIO(contenido))
+
+    for hoja in HOJAS:
+        if hoja not in libro.sheetnames:
+            continue
+        ws = libro[hoja]
+
+        # Encabezados en la primera fila (igual que la lectura con pandas).
+        columna_po = next(
+            (c.column for c in ws[1] if c.value is not None
+             and normalizar_nombre_columna(c.value) == "PRODUCT_OWNER"),
+            None
+        )
+        if columna_po is None or ws.max_row < 2:
+            continue
+
+        ultima_columna = max(ws.max_column, columna_po)
+        rango = f"A1:{get_column_letter(ultima_columna)}{ws.max_row}"
+
+        # Si los datos están en una Tabla de Excel, el filtro va en la tabla.
+        tabla = next(
+            (t for t in ws.tables.values()
+             if t.ref.split(":")[0].rstrip("0123456789") == "A"
+             and t.ref.split(":")[0][1:] == "1"),
+            None
+        )
+        if tabla is not None:
+            rango = tabla.ref
+            filtro = tabla.autoFilter
+            if filtro is None:
+                from openpyxl.worksheet.filters import AutoFilter
+                tabla.autoFilter = filtro = AutoFilter(ref=rango)
+            filtro.ref = rango
+            ws.auto_filter.ref = None
+        else:
+            ws.auto_filter.ref = rango
+            filtro = ws.auto_filter
+        filtro.filterColumn = []
+
+        visibles = set()
+        for fila in range(2, ws.max_row + 1):
+            valor = ws.cell(row=fila, column=columna_po).value
+            if valor is not None and normalizar_product_owner(valor) in permitidos:
+                visibles.add(str(valor))
+                ws.row_dimensions[fila].hidden = False
+            else:
+                ws.row_dimensions[fila].hidden = True
+
+        # Valores marcados en el filtro (como en la lista del filtro de Excel).
+        filtro.add_filter_column(columna_po - 1, sorted(visibles) or ["(sin coincidencias)"])
+
+    salida = io.BytesIO()
+    libro.save(salida)
+    return salida.getvalue()
