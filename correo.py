@@ -315,10 +315,24 @@ def _tabla_dinamica(registros):
         tipos.setdefault(tipo, set()).add(rango)
 
     tipos = {t: sorted(r, key=_orden_rango) for t, r in sorted(tipos.items())}
-    total_po = {}
-    for (po, _, _), c in conteo.items():
+    total_po, mas_5_dias = {}, {}
+    for (po, _, rango), c in conteo.items():
         total_po[po] = total_po.get(po, 0) + c
-    filas = sorted(total_po, key=lambda po: (-total_po[po], po))
+        if rango in ORDEN_RANGOS[1:]:      # 6-10, 11-20 y >20 días
+            mas_5_dias[po] = mas_5_dias.get(po, 0) + c
+
+    # Orden de los POD: primero los que tienen solicitudes de más de 5 días
+    # (de mayor a menor por esa cantidad y luego por el total); después los
+    # demás, de mayor a menor por el total. Empates: orden alfabético.
+    filas = sorted(
+        total_po,
+        key=lambda po: (
+            0 if mas_5_dias.get(po) else 1,
+            -mas_5_dias.get(po, 0),
+            -total_po[po],
+            po,
+        )
+    )
 
     celda = (f"font-family:'Segoe UI',Arial,sans-serif;font-size:12px;color:#17342f;"
              f"padding:6px 8px;border-bottom:1px solid {BORDE};white-space:nowrap;")
