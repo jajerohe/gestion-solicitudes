@@ -234,7 +234,7 @@ def calcular_tabla_jdu(registros):
 
 
 def agregar_hoja_jdu(libro, general, funcional):
-    """Agrega (o reemplaza) la hoja JDU, como primera hoja del libro, con las
+    """Agrega (o reemplaza) la hoja JDU, justo antes de DETALLE_GENERAL, con las
     mismas tablas del correo de backlog: Detalle General y Grupo Funcional
     Ecopetrol, con el mismo orden y los colores del sistema."""
     from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
@@ -242,7 +242,10 @@ def agregar_hoja_jdu(libro, general, funcional):
 
     if "JDU" in libro.sheetnames:
         del libro["JDU"]
-    ws = libro.create_sheet("JDU", 0)
+    # JDU va justo antes de DETALLE_GENERAL (o al final si no existe).
+    posicion = (libro.sheetnames.index("DETALLE_GENERAL")
+                if "DETALLE_GENERAL" in libro.sheetnames else len(libro.sheetnames))
+    ws = libro.create_sheet("JDU", posicion)
     ws.sheet_view.showGridLines = False
 
     def relleno(color):
@@ -337,7 +340,7 @@ def agregar_hoja_jdu(libro, general, funcional):
 
     for c, ancho in anchos.items():
         ws.column_dimensions[get_column_letter(c)].width = ancho
-    libro.active = 0
+    libro.active = libro.sheetnames.index("JDU")
     for hoja in libro.worksheets:
         hoja.sheet_view.tabSelected = hoja.title == "JDU"
 
