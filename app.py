@@ -616,14 +616,19 @@ def notificar_carga(resumen, archivo_bytes):
             return "warning", "⚠️ No hay usuarios Operador activos con correo para notificar la carga."
 
         # El adjunto lleva aplicado el filtro de PRODUCT_OWNER con los PODS
-        # registrados; si no se puede filtrar, se envía el archivo original.
+        # registrados y la hoja JDU con las tablas del correo; si no se puede
+        # preparar, se envía el archivo original.
         aviso_adjunto = ""
         try:
-            with st.spinner("Preparando el adjunto con el filtro de PODS..."):
-                adjunto = filtrar_adjunto(archivo_bytes, obtener_pods()["NOMBRE"].dropna().tolist())
+            with st.spinner("Preparando el adjunto (filtro de PODS y hoja JDU)..."):
+                adjunto = filtrar_adjunto(
+                    archivo_bytes,
+                    obtener_pods()["NOMBRE"].dropna().tolist(),
+                    tablas_jdu=(resumen["general"], resumen["funcional"]),
+                )
         except Exception as e:
             adjunto = archivo_bytes
-            aviso_adjunto = f" No fue posible aplicar el filtro de PODS al adjunto ({e}); se envió el archivo original."
+            aviso_adjunto = f" No fue posible preparar el adjunto con el filtro de PODS y la hoja JDU ({e}); se envió el archivo original."
 
         with st.spinner("Enviando el resumen de la carga por correo..."):
             enviados = enviar_correo_backlog(correos, resumen, adjunto)

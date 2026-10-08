@@ -186,13 +186,170 @@ def cargar_excel(hojas, db):
 
     return resultado
 
-def filtrar_adjunto(contenido, product_owners):
+# ============================================================
+# TABLA JDU (la misma del correo de backlog y de la hoja JDU)
+# ============================================================
+ORDEN_RANGOS = ["0-5 días", "6-10 días", "11-20 días", ">20 días"]
+
+
+def _orden_rango(rango):
+    return ORDEN_RANGOS.index(rango) if rango in ORDEN_RANGOS else len(ORDEN_RANGOS)
+
+
+def calcular_tabla_jdu(registros):
+    """Cuenta las solicitudes por Product Owner, TIPO y RANGTIEMPO.
+
+    registros: [(product_owner, tipo, rango), ...].
+    Devuelve (conteo, tipos, filas, total_po):
+      conteo[(po, tipo, rango)] -> cantidad
+      tipos  {tipo: [rangos en orden 0-5, 6-10, 11-20, >20]}
+      filas  Product Owner en el orden del reporte: primero los que tienen
+             solicitudes de más de 5 días (de mayor a menor por esa cantidad y
+             luego por el total); después los demás, de mayor a menor por el
+             total. Empates: orden alfabético.
+      total_po {po: total}
+    """
+    conteo, tipos = {}, {}
+    for po, tipo, rango in registros:
+        conteo[(po, tipo, rango)] = conteo.get((po, tipo, rango), 0) + 1
+        tipos.setdefault(tipo, set()).add(rango)
+
+    tipos = {t: sorted(r, key=_orden_rango) for t, r in sorted(tipos.items())}
+    total_po, mas_5_dias = {}, {}
+    for (po, _, rango), c in conteo.items():
+        total_po[po] = total_po.get(po, 0) + c
+        if rango in ORDEN_RANGOS[1:]:      # 6-10, 11-20 y >20 días
+            mas_5_dias[po] = mas_5_dias.get(po, 0) + c
+
+    filas = sorted(
+        total_po,
+        key=lambda po: (
+            0 if mas_5_dias.get(po) else 1,
+            -mas_5_dias.get(po, 0),
+            -total_po[po],
+            po,
+        )
+    )
+    return conteo, tipos, filas, total_po
+
+
+def agregar_hoja_jdu(libro, general, funcional):
+    """Agrega (o reemplaza) la hoja JDU, como primera hoja del libro, con las
+    mismas tablas del correo de backlog: Detalle General y Grupo Funcional
+    Ecopetrol, con el mismo orden y los colores del sistema."""
+    from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+    from openpyxl.utils import get_column_letter
+
+    if "JDU" in libro.sheetnames:
+        del libro["JDU"]
+    ws = libro.create_sheet("JDU", 0)
+    ws.sheet_view.showGridLines = False
+
+    def relleno(color):
+        return PatternFill("solid", fgColor=color)
+
+    VERDE_OSCURO, LIMA, FONDO = "004236", "CCD32A", "F4F5F7"
+    borde = Border(bottom=Side(style="thin", color="E0E5E5"))
+    f_titulo = Font(name="Calibri", size=13, bold=True, color=VERDE_OSCURO)
+    f_enc = Font(name="Calibri", size=9, bold=True, color="5F6D69")
+    f_tipo = Font(name="Calibri", size=9, bold=True, color=VERDE_OSCURO)
+    f_dato = Font(name="Calibri", size=11, color="17342F")
+    f_negrita = Font(name="Calibri", size=11, bold=True, color="17342F")
+    f_total_tipo = Font(name="Calibri", size=11, bold=True, color=VERDE_OSCURO)
+    f_blanca = Font(name="Calibri", size=11, bold=True, color="FFFFFF")
+    derecha = Alignment(horizontal="right", vertical="bottom", wrap_text=True)
+    centro = Alignment(horizontal="center", vertical="center")
+
+    fila = 1
+    anchos = {1: 36}
+
+    def escribir_tabla(titulo, registros, fila):
+        ws.cell(fila, 1, titulo).font = f_titulo
+        fila += 1
+        if not registros:
+            ws.cell(fila, 1, "Sin solicitudes").font = f_dato
+            return fila + 1
+
+        conteo, tipos, filas_po, total_po = calcular_tabla_jdu(registros)
+        f1, f2 = fila, fila + 1
+
+        def enc(r, c, valor, fuente=f_enc, fondo=FONDO, alineacion=derecha):
+            celda = ws.cell(r, c, valor)
+            celda.font, celda.fill, celda.alignment = fuente, relleno(fondo), alineacion
+            return celda
+
+        enc(f1, 1, None); enc(f2, 1, "PRODUCT OWNER", alineacion=Alignment(vertical="bottom"))
+        col = 2
+        columnas = []           # (tipo, rango | None para total del tipo)
+        for tipo, rangos in tipos.items():
+            ws.merge_cells(start_row=f1, start_column=col, end_row=f1, end_column=col + len(rangos) - 1)
+            celda = enc(f1, col, str(tipo).upper(), f_tipo, alineacion=centro)
+            for c in range(col, col + len(rangos)):
+                ws.cell(f1, c).fill = relleno(FONDO)
+                ws.cell(f1, c).border = Border(bottom=Side(style="medium", color=LIMA))
+            for r in rangos:
+                enc(f2, col, str(r).upper())
+                columnas.append((tipo, r)); col += 1
+            enc(f1, col, None, fondo="EEF4E6")
+            enc(f2, col, f"TOTAL {str(tipo).upper()}", f_tipo, "EEF4E6")
+            columnas.append((tipo, None)); col += 1
+        enc(f1, col, None); enc(f2, col, "TOTAL GENERAL", f_tipo)
+        ultima = col
+
+        fila = f2 + 1
+        for po in filas_po:
+            ws.cell(fila, 1, po).font = f_dato
+            for i, (tipo, r) in enumerate(columnas, start=2):
+                celda = ws.cell(fila, i)
+                if r is None:
+                    valor = sum(conteo.get((po, tipo, x), 0) for x in tipos[tipo])
+                    celda.value = valor or None
+                    celda.font, celda.fill = f_total_tipo, relleno("EEF4E6")
+                else:
+                    valor = conteo.get((po, tipo, r), 0)
+                    if valor:
+                        celda.value = valor
+                        if r == ORDEN_RANGOS[0]:
+                            celda.font, celda.fill = f_negrita, relleno("F7DB17")
+                        else:
+                            celda.font, celda.fill = f_blanca, relleno("FF5F00")
+            ws.cell(fila, ultima, total_po[po]).font = f_negrita
+            for c in range(1, ultima + 1):
+                ws.cell(fila, c).border = borde
+            fila += 1
+
+        ws.cell(fila, 1, "Total general")
+        for i, (tipo, r) in enumerate(columnas, start=2):
+            rangos = tipos[tipo] if r is None else [r]
+            ws.cell(fila, i, sum(conteo.get((po, tipo, x), 0) for po in filas_po for x in rangos))
+        ws.cell(fila, ultima, sum(total_po.values()))
+        for c in range(1, ultima + 1):
+            ws.cell(fila, c).font, ws.cell(fila, c).fill = f_blanca, relleno(VERDE_OSCURO)
+
+        for c in range(2, ultima + 1):
+            anchos[c] = max(anchos.get(c, 0), 13)
+        anchos[1] = max(anchos[1], max(len(str(p)) for p in filas_po) + 4)
+        return fila + 1
+
+    fila = escribir_tabla("Detalle General", general, fila)
+    if funcional:
+        fila = escribir_tabla("Grupo Funcional Ecopetrol", funcional, fila + 2)
+
+    for c, ancho in anchos.items():
+        ws.column_dimensions[get_column_letter(c)].width = ancho
+    libro.active = 0
+    for hoja in libro.worksheets:
+        hoja.sheet_view.tabSelected = hoja.title == "JDU"
+
+
+def filtrar_adjunto(contenido, product_owners, tablas_jdu=None):
     """Devuelve una copia del Excel con el filtro de Excel aplicado en
     PRODUCT_OWNER de DETALLE_GENERAL y DETALLE_FUNCIONALES, dejando visibles
     solo los Product Owner recibidos (los NOMBRE de la tabla PODS).
 
     Las demás hojas, el formato y los datos se conservan: las filas de otros
     Product Owner solo quedan ocultas por el filtro, como al filtrar a mano.
+    Con tablas_jdu=(general, funcional) agrega además la hoja JDU.
     """
     import io
     from openpyxl import load_workbook
@@ -249,6 +406,10 @@ def filtrar_adjunto(contenido, product_owners):
 
         # Valores marcados en el filtro (como en la lista del filtro de Excel).
         filtro.add_filter_column(columna_po - 1, sorted(visibles) or ["(sin coincidencias)"])
+
+    # Hoja JDU con las mismas tablas del correo (general, funcional).
+    if tablas_jdu is not None:
+        agregar_hoja_jdu(libro, *tablas_jdu)
 
     salida = io.BytesIO()
     libro.save(salida)
