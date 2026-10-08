@@ -460,7 +460,7 @@ def construir_correo_backlog(resumen):
     leyenda = _leyenda()
 
     tarjeta_general = _tarjeta(
-        "Detalle general",
+        "Detalle General",
         (_tabla_dinamica(resumen["general"]) + leyenda) if resumen["general"]
         else f'<p style="{p}">Sin solicitudes en DETALLE_GENERAL.</p>'
     )
