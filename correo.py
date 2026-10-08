@@ -32,6 +32,21 @@ NOMBRE_SISTEMA = "PODEX"
 DESCRIPCION_SISTEMA = "Sistema Integrado de Gestión de Peticiones, Incidentes y Vulnerabilidades"
 APP_URL_DEFECTO = "https://podexweb.streamlit.app"
 LOGO = Path(__file__).with_name("Logo_PODEX_correo.png")
+LOGO_ECP = Path(__file__).with_name("Logo_ECP.png")
+
+# Marca del encabezado y el pie de cada correo.
+MARCA_PODEX = {
+    "logo": LOGO, "cid": "logo_podex", "alt": NOMBRE_SISTEMA, "ancho_logo": 170,
+    "subtitulo": DESCRIPCION_SISTEMA,
+    "pie_titulo": NOMBRE_SISTEMA, "pie_subtitulo": DESCRIPCION_SISTEMA,
+    "copyright": NOMBRE_SISTEMA,
+}
+MARCA_ECOPETROL = {
+    "logo": LOGO_ECP, "cid": "logo_ecp", "alt": "ECOPETROL", "ancho_logo": 240,
+    "subtitulo": "Control Operativo – Backlog Diario",
+    "pie_titulo": "ECOPETROL S.A", "pie_subtitulo": "Jefatura de Soluciones Digitales Upstream",
+    "copyright": "",
+}
 
 # Paleta corporativa usada en la aplicación.
 VERDE_OSCURO = "#004236"
@@ -84,10 +99,11 @@ def _paso(numero, texto):
     )
 
 
-def _plantilla(titulo, cuerpo, ancho=600):
+def _plantilla(titulo, cuerpo, ancho=600, marca=MARCA_PODEX):
     """Estructura común de los correos: franja de colores, logo, título,
-    cuerpo y pie con el nombre del sistema."""
+    cuerpo y pie con la marca recibida (PODEX por defecto)."""
     anio = datetime.now().year
+    copyright = f"© {anio} {marca['copyright']}".strip()
     return f"""<!DOCTYPE html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
 <body style="margin:0;padding:0;background:{FONDO};font-family:'Segoe UI',Arial,sans-serif;">
@@ -97,17 +113,17 @@ def _plantilla(titulo, cuerpo, ancho=600):
 
   <tr><td style="height:6px;background:linear-gradient(90deg,{AMARILLO},{LIMA},{VERDE_OSCURO});background-color:{LIMA};font-size:0;line-height:0;">&nbsp;</td></tr>
   <tr><td align="center" style="padding:26px 24px 10px;">
-    <img src="cid:logo_podex" width="170" alt="{NOMBRE_SISTEMA}" style="display:block;border:0;width:170px;height:auto;">
+    <img src="cid:{marca['cid']}" width="{marca['ancho_logo']}" alt="{marca['alt']}" style="display:block;border:0;width:{marca['ancho_logo']}px;height:auto;">
   </td></tr>
   <tr><td align="center" style="padding:0 24px 22px;">
     <div style="color:{VERDE_OSCURO};font-size:22px;font-weight:800;">{titulo}</div>
-    <div style="color:{GRIS_TEXTO};font-size:12px;margin-top:4px;">{DESCRIPCION_SISTEMA}</div>
+    <div style="color:{GRIS_TEXTO};font-size:12px;margin-top:4px;">{marca['subtitulo']}</div>
   </td></tr>
 
 {cuerpo}  <tr><td style="background:{VERDE_OSCURO};padding:16px 24px;" align="center">
-    <div style="color:#fff;font-size:13px;font-weight:700;">{NOMBRE_SISTEMA}</div>
-    <div style="color:#cfe3dc;font-size:11px;margin-top:2px;">{DESCRIPCION_SISTEMA}</div>
-    <div style="color:#9fbfb5;font-size:10px;margin-top:8px;">Este es un mensaje automático, por favor no responda a este correo. © {anio} {NOMBRE_SISTEMA}</div>
+    <div style="color:#fff;font-size:13px;font-weight:700;">{marca['pie_titulo']}</div>
+    <div style="color:#cfe3dc;font-size:11px;margin-top:2px;">{marca['pie_subtitulo']}</div>
+    <div style="color:#9fbfb5;font-size:10px;margin-top:8px;">Este es un mensaje automático, por favor no responda a este correo. {copyright}</div>
   </td></tr>
   <tr><td style="height:4px;background:{LIMA};font-size:0;line-height:0;">&nbsp;</td></tr>
 
@@ -234,7 +250,7 @@ def enviar_correo_bienvenida(nombre, usuario, correo, perfil, pods, contrasena,
         servidor.send_message(_armar_mensaje(config, correo, asunto, texto, html))
 
 
-def _armar_mensaje(config, destinatario, asunto, texto, html):
+def _armar_mensaje(config, destinatario, asunto, texto, html, marca=MARCA_PODEX):
     """Mensaje MIME con versión de texto, HTML y el logo incrustado."""
     remitente = config.get("remitente") or formataddr((NOMBRE_SISTEMA, config["usuario"]))
     nombre_rem, correo_rem = parseaddr(remitente)
@@ -249,10 +265,10 @@ def _armar_mensaje(config, destinatario, asunto, texto, html):
     alternativa.attach(MIMEText(html, "html", "utf-8"))
     mensaje.attach(alternativa)
 
-    if LOGO.exists():
-        logo = MIMEImage(LOGO.read_bytes(), _subtype="png")
-        logo.add_header("Content-ID", "<logo_podex>")
-        logo.add_header("Content-Disposition", "inline", filename=LOGO.name)
+    if marca["logo"].exists():
+        logo = MIMEImage(marca["logo"].read_bytes(), _subtype="png")
+        logo.add_header("Content-ID", f"<{marca['cid']}>")
+        logo.add_header("Content-Disposition", "inline", filename=marca["logo"].name)
         mensaje.attach(logo)
 
     return mensaje
@@ -428,7 +444,7 @@ def construir_correo_backlog(resumen):
     texto = intro + "\nDETALLE GENERAL\n" + (_tabla_texto(resumen["general"]) or "  Sin solicitudes")
     if resumen["funcional"]:
         texto += "\n\nGRUPO FUNCIONAL ECOPETROL\n" + _tabla_texto(resumen["funcional"])
-    texto += f"\n\nCordialmente,\n{resumen['usuario_carga']}\n"
+    texto += "\n"
 
     p = "color:#17342f;font-size:14px;line-height:1.6;margin:0 0 10px;"
     leyenda = _leyenda()
@@ -469,13 +485,10 @@ def construir_correo_backlog(resumen):
   <tr><td style="padding:0 32px;">{tarjeta_general}</td></tr>
   {f'<tr><td height="24" bgcolor="#ffffff" style="height:24px;background:#ffffff;font-size:0;line-height:0;">&nbsp;</td></tr><tr><td style="padding:0 32px;">{tarjeta_funcional}</td></tr>' if tarjeta_funcional else ""}
 
-  <tr><td style="padding:22px 32px 26px;">
-    <p style="{p}margin:0;">Cordialmente,</p>
-    <p style="{p}margin:0;"><strong>{escape(resumen["usuario_carga"])}</strong></p>
-  </td></tr>
+  <tr><td height="28" style="height:28px;font-size:0;line-height:0;">&nbsp;</td></tr>
 
 """
-    html = _plantilla(nombre_archivo, cuerpo, ancho=900)
+    html = _plantilla(nombre_archivo, cuerpo, ancho=900, marca=MARCA_ECOPETROL)
 
     return asunto, texto, html
 
@@ -499,7 +512,8 @@ def enviar_correo_backlog(correos, resumen, archivo_bytes):
     _, correo_rem = parseaddr(remitente)
 
     # mixed = [related (texto/HTML + logo incrustado), Excel adjunto]
-    cuerpo = _armar_mensaje(config, correo_rem or config["usuario"], asunto, texto, html)
+    cuerpo = _armar_mensaje(config, correo_rem or config["usuario"], asunto, texto, html,
+                            marca=MARCA_ECOPETROL)
     mensaje = MIMEMultipart("mixed")
     for encabezado in ("Subject", "From", "To"):
         mensaje[encabezado] = cuerpo[encabezado]
