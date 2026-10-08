@@ -444,7 +444,7 @@ def construir_correo_backlog(resumen):
     texto = intro + "\nDETALLE GENERAL\n" + (_tabla_texto(resumen["general"]) or "  Sin solicitudes")
     if resumen["funcional"]:
         texto += "\n\nGRUPO FUNCIONAL ECOPETROL\n" + _tabla_texto(resumen["funcional"])
-    texto += f"\n\nCordialmente,\n{resumen['usuario_carga']}\n"
+    texto += "\n"
 
     p = "color:#17342f;font-size:14px;line-height:1.6;margin:0 0 10px;"
     leyenda = _leyenda()
@@ -485,10 +485,7 @@ def construir_correo_backlog(resumen):
   <tr><td style="padding:0 32px;">{tarjeta_general}</td></tr>
   {f'<tr><td height="24" bgcolor="#ffffff" style="height:24px;background:#ffffff;font-size:0;line-height:0;">&nbsp;</td></tr><tr><td style="padding:0 32px;">{tarjeta_funcional}</td></tr>' if tarjeta_funcional else ""}
 
-  <tr><td style="padding:22px 32px 26px;">
-    <p style="{p}margin:0;">Cordialmente,</p>
-    <p style="{p}margin:0;"><strong>{escape(resumen["usuario_carga"])}</strong></p>
-  </td></tr>
+  <tr><td height="28" style="height:28px;font-size:0;line-height:0;">&nbsp;</td></tr>
 
 """
     html = _plantilla(nombre_archivo, cuerpo, ancho=900, marca=MARCA_ECOPETROL)
