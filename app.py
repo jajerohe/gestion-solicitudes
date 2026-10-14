@@ -16,6 +16,7 @@ from usuarios import (
 )
 from correo import configuracion_correo, enviar_correo_backlog, nombre_backlog
 from pods import mostrar_modulo_pods
+from reportes import mostrar_modulo_reportes
 
 # Tiempo máximo (segundos) que se reutilizan los datos consultados entre
 # interacciones. Cualquier cambio guardado limpia la caché de inmediato.
@@ -307,8 +308,8 @@ nombre_actual = st.session_state.get("nombre_actual", "")
 # Perfil Operador: acceso restringido a las solicitudes de sus POD asignados.
 es_administrador = str(perfil_actual or "").strip().lower() == "administrador"
 
-# Página activa del menú lateral: "solicitudes", o "cargar", "usuarios" y
-# "pods" (solo administrador).
+# Página activa del menú lateral: "solicitudes", o "cargar", "usuarios",
+# "pods" y "reportes" (solo administrador).
 if "pagina_actual" not in st.session_state or not es_administrador:
     st.session_state["pagina_actual"] = "solicitudes"
 pagina_actual = st.session_state["pagina_actual"]
@@ -328,12 +329,12 @@ section[data-testid="stSidebar"]>div{padding:.8rem .8rem 1rem!important}
 .podex-side-brand{padding:4px 7px 13px;border-bottom:1px solid #edf0f1;margin-bottom:10px}
 .podex-side-title{color:var(--dark);font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;margin-top:3px}
 .podex-menu-section{color:#7b8582;font-size:10px;font-weight:800;text-transform:uppercase;margin:16px 7px 6px;letter-spacing:.6px}
-.st-key-podex_menu div[data-testid="stButton"]>button,.st-key-podex_menu_admin div[data-testid="stButton"]>button{justify-content:flex-start!important;height:auto!important;min-height:38px!important;padding:9px!important;margin:0!important;border:none!important;border-radius:7px!important;background:transparent!important;color:#40514d!important;font-size:12px!important;font-weight:600!important;box-shadow:none!important}
-.st-key-podex_menu div[data-testid="stButton"]>button:hover,.st-key-podex_menu_admin div[data-testid="stButton"]>button:hover{background:#edf6f2!important}
-.st-key-podex_menu div[data-testid="stButton"]>button[kind="primary"],.st-key-podex_menu_admin div[data-testid="stButton"]>button[kind="primary"]{color:#fff!important;background:linear-gradient(90deg,#0b5b4d,#147b66)!important;box-shadow:0 3px 10px rgba(11,91,77,.16)!important}
-.st-key-podex_menu div[data-testid="stButton"]>button>div,.st-key-podex_menu_admin div[data-testid="stButton"]>button>div{justify-content:flex-start!important;width:100%!important}
-.st-key-podex_menu div[data-testid="stButton"]>button p,.st-key-podex_menu_admin div[data-testid="stButton"]>button p{font-size:12px!important;font-weight:600!important;text-align:left!important}
-.st-key-podex_menu,.st-key-podex_menu_admin{gap:3px!important}
+.st-key-podex_menu div[data-testid="stButton"]>button,.st-key-podex_menu_admin div[data-testid="stButton"]>button,.st-key-podex_menu_reportes div[data-testid="stButton"]>button{justify-content:flex-start!important;height:auto!important;min-height:38px!important;padding:9px!important;margin:0!important;border:none!important;border-radius:7px!important;background:transparent!important;color:#40514d!important;font-size:12px!important;font-weight:600!important;box-shadow:none!important}
+.st-key-podex_menu div[data-testid="stButton"]>button:hover,.st-key-podex_menu_admin div[data-testid="stButton"]>button,.st-key-podex_menu_reportes div[data-testid="stButton"]>button:hover{background:#edf6f2!important}
+.st-key-podex_menu div[data-testid="stButton"]>button[kind="primary"],.st-key-podex_menu_admin div[data-testid="stButton"]>button,.st-key-podex_menu_reportes div[data-testid="stButton"]>button[kind="primary"]{color:#fff!important;background:linear-gradient(90deg,#0b5b4d,#147b66)!important;box-shadow:0 3px 10px rgba(11,91,77,.16)!important}
+.st-key-podex_menu div[data-testid="stButton"]>button>div,.st-key-podex_menu_admin div[data-testid="stButton"]>button,.st-key-podex_menu_reportes div[data-testid="stButton"]>button>div{justify-content:flex-start!important;width:100%!important}
+.st-key-podex_menu div[data-testid="stButton"]>button p,.st-key-podex_menu_admin div[data-testid="stButton"]>button,.st-key-podex_menu_reportes div[data-testid="stButton"]>button p{font-size:12px!important;font-weight:600!important;text-align:left!important}
+.st-key-podex_menu,.st-key-podex_menu_admin,.st-key-podex_menu_reportes{gap:3px!important}
 .podex-topbar{background:#fff;border:1px solid #9ec91f;border-radius:8px;min-height:64px;padding:9px 16px;display:flex;align-items:center;justify-content:space-between;box-shadow:inset 0 3px 0 var(--lime);margin-bottom:12px}
 .podex-top-title{color:var(--dark);font-size:18px;font-weight:800}.podex-top-subtitle{color:#7b8582;font-size:10px;margin-top:2px}.podex-user-pill{background:#f1f6f4;border:1px solid #dce9e4;color:#28564d;border-radius:20px;padding:7px 12px;font-size:10px;font-weight:700}.podex-top-actions{display:flex;align-items:center;gap:10px}.podex-logout{width:36px;height:36px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:linear-gradient(160deg,#C3C5C6,#403833);box-shadow:0 2px 6px rgba(64,56,51,.3);transition:transform .15s,box-shadow .15s;text-decoration:none!important}.podex-logout:hover{transform:scale(1.08);box-shadow:0 3px 10px rgba(64,56,51,.4)}
 .podex-section-title{color:#16473e;font-size:15px;font-weight:800;margin:2px 0 5px}.podex-section-caption{color:#7b8582;font-size:10px;margin-bottom:8px}
@@ -351,12 +352,12 @@ span[data-baseweb="tag"],[data-testid="stMultiSelectTagsContainer"] span[data-ta
 div[role="dialog"] div[data-testid="stForm"]{border-color:var(--border)!important;border-radius:8px!important;background:#fff!important}
 /* Botones circulares de acción (contenedores con key "acciones_*").
    Un color de la paleta corporativa por función. */
-[class*="st-key-acciones_"] div[data-testid="stButton"] button,[class*="st-key-acciones_"] div[data-testid="stFormSubmitButton"] button{width:40px!important;height:40px!important;min-height:40px!important;padding:0!important;border-radius:50%!important;border:none!important;background:linear-gradient(160deg,#2f6db5,#00214D)!important;box-shadow:0 2px 6px rgba(20,60,90,.25)!important;transition:transform .15s,box-shadow .15s}
-[class*="st-key-acciones_"] div[data-testid="stButton"] button:hover,[class*="st-key-acciones_"] div[data-testid="stFormSubmitButton"] button:hover{transform:scale(1.08);box-shadow:0 3px 10px rgba(20,60,90,.35)!important}
+[class*="st-key-acciones_"] div[data-testid="stButton"] button,[class*="st-key-acciones_"] div[data-testid="stFormSubmitButton"] button,[class*="st-key-acciones_"] div[data-testid="stDownloadButton"] button{width:40px!important;height:40px!important;min-height:40px!important;padding:0!important;border-radius:50%!important;border:none!important;background:linear-gradient(160deg,#2f6db5,#00214D)!important;box-shadow:0 2px 6px rgba(20,60,90,.25)!important;transition:transform .15s,box-shadow .15s}
+[class*="st-key-acciones_"] div[data-testid="stButton"] button:hover,[class*="st-key-acciones_"] div[data-testid="stFormSubmitButton"] button:hover,[class*="st-key-acciones_"] div[data-testid="stDownloadButton"] button:hover{transform:scale(1.08);box-shadow:0 3px 10px rgba(20,60,90,.35)!important}
 [class*="st-key-acciones_"] div[data-testid="stButton"] button:disabled,[class*="st-key-acciones_"] div[data-testid="stFormSubmitButton"] button:disabled{opacity:.35;transform:none;box-shadow:none!important}
-[class*="st-key-acciones_"] div[data-testid="stButton"] button span,[class*="st-key-acciones_"] div[data-testid="stFormSubmitButton"] button span{color:#fff!important;font-size:20px!important;margin:0!important}
+[class*="st-key-acciones_"] div[data-testid="stButton"] button span,[class*="st-key-acciones_"] div[data-testid="stFormSubmitButton"] button span,[class*="st-key-acciones_"] div[data-testid="stDownloadButton"] button span{color:#fff!important;font-size:20px!important;margin:0!important}
 .st-key-btn_gestionar div[data-testid="stButton"] button,.st-key-btn_usr_nuevo div[data-testid="stButton"] button,.st-key-btn_cargar div[data-testid="stButton"] button,.st-key-btn_pod_nuevo div[data-testid="stButton"] button{background:linear-gradient(160deg,#CCD32A,#004236)!important}
-.st-key-btn_ver_gestion div[data-testid="stButton"] button,.st-key-btn_usr_editar div[data-testid="stButton"] button,.st-key-btn_pod_editar div[data-testid="stButton"] button{background:linear-gradient(160deg,#2f6db5,#00214D)!important}
+.st-key-btn_ver_gestion div[data-testid="stButton"] button,.st-key-btn_rep_descargar div[data-testid="stDownloadButton"] button,.st-key-btn_usr_editar div[data-testid="stButton"] button,.st-key-btn_pod_editar div[data-testid="stButton"] button{background:linear-gradient(160deg,#2f6db5,#00214D)!important}
 .st-key-btn_actualizar div[data-testid="stButton"] button,.st-key-btn_usr_estado div[data-testid="stButton"] button{background:linear-gradient(160deg,#F7DB17,#FF5F00)!important}
 .st-key-btn_usr_clave div[data-testid="stButton"] button{background:linear-gradient(160deg,#C3C5C6,#403833)!important}
 .st-key-btn_usr_eliminar div[data-testid="stButton"] button,.st-key-btn_pod_eliminar div[data-testid="stButton"] button{background:linear-gradient(160deg,#FF5F00,#8a2c00)!important}
@@ -401,6 +402,10 @@ with st.sidebar:
         opciones_menu.append(("cargar", "📥  Cargar solicitudes"))
     mostrar_menu("podex_menu", opciones_menu)
 
+    if es_administrador:
+        st.markdown('<div class="podex-menu-section">Reportes</div>',unsafe_allow_html=True)
+        mostrar_menu("podex_menu_reportes", [("reportes", "📊  Reportes")])
+
 
 # ============================================================
 # ENCABEZADO INTERNO
@@ -410,6 +415,7 @@ TITULOS_PAGINA = {
     "cargar": "Cargar Solicitudes",
     "usuarios": "Administración de Usuarios",
     "pods": "Administración de POD's",
+    "reportes": "Reportes",
 }
 
 st.markdown(f"""
@@ -430,6 +436,13 @@ if es_administrador and pagina_actual == "pods":
 
 if es_administrador and pagina_actual == "usuarios":
     mostrar_modulo_usuarios(usuario_actual)
+    st.stop()
+
+# ============================================================
+# REPORTES — SOLO ADMINISTRADOR
+# ============================================================
+if es_administrador and pagina_actual == "reportes":
+    mostrar_modulo_reportes()
     st.stop()
 
 # ============================================================
