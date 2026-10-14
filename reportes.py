@@ -5,12 +5,11 @@ Cada reporte es una función que dibuja su contenido; se registran en REPORTES
 y la página muestra un selector para elegir cuál ver.
 
 Reportes disponibles:
-  - Auditoría de carga de Excel: historial de public."AUDITORIA", que se
+  - Auditoría de carga: historial de public."AUDITORIA", que se
     llena en cada carga de solicitudes (app.py → guardar_auditoria).
 """
 
 import io
-import re
 from datetime import date, timedelta
 
 import pandas as pd
@@ -39,6 +38,8 @@ def obtener_auditoria_cargas():
                 COALESCE("TOTAL_REGISTROS",
                          COALESCE("REGISTROS_GENERALES", 0)
                          + COALESCE("REGISTROS_FUNCIONALES", 0)) AS "TOTAL_REGISTROS",
+                COALESCE("DUPLICADOS", 0) AS "DUPLICADOS",
+                COALESCE("ERRORES", 0) AS "ERRORES",
                 "ESTADO",
                 "OBSERVACIONES"
             FROM public."AUDITORIA"
@@ -47,25 +48,17 @@ def obtener_auditoria_cargas():
         df = pd.DataFrame(db.fetchall(), columns=[
             "ID_AUDITORIA", "FECHA_CARGUE", "NOMBRE_ARCHIVO", "USUARIO_CARGA",
             "REGISTROS_GENERALES", "REGISTROS_FUNCIONALES", "TOTAL_REGISTROS",
-            "ESTADO", "OBSERVACIONES",
+            "DUPLICADOS", "ERRORES", "ESTADO", "OBSERVACIONES",
         ])
     finally:
         db.cerrar()
 
     df["FECHA_CARGUE"] = pd.to_datetime(df["FECHA_CARGUE"])
-    for columna in ("REGISTROS_GENERALES", "REGISTROS_FUNCIONALES", "TOTAL_REGISTROS"):
+    for columna in ("REGISTROS_GENERALES", "REGISTROS_FUNCIONALES", "TOTAL_REGISTROS",
+                    "DUPLICADOS", "ERRORES"):
         df[columna] = pd.to_numeric(df[columna], errors="coerce").fillna(0).astype(int)
 
-    # Duplicados y errores solo quedan en el texto de OBSERVACIONES
-    # ("Archivo procesado. Duplicados: N. Errores: N.").
-    df["DUPLICADOS"] = df["OBSERVACIONES"].map(lambda t: _numero_en(t, "Duplicados"))
-    df["ERRORES"] = df["OBSERVACIONES"].map(lambda t: _numero_en(t, "Errores"))
     return df
-
-
-def _numero_en(texto, etiqueta):
-    m = re.search(rf"{etiqueta}:\s*(\d+)", str(texto or ""))
-    return int(m.group(1)) if m else 0
 
 
 def a_excel(df, hoja):
@@ -82,7 +75,7 @@ def a_excel(df, hoja):
 
 
 # ============================================================
-# REPORTE: AUDITORÍA DE CARGA DE EXCEL
+# REPORTE: AUDITORÍA DE CARGA
 # ============================================================
 def reporte_auditoria_cargas():
 
@@ -233,7 +226,7 @@ def reporte_auditoria_cargas():
 # con escribir su función y registrarla aquí.
 REPORTES = {
     "auditoria_cargas": (
-        "Auditoría de carga de Excel",
+        "Auditoría de carga",
         "Historial de los archivos cargados: quién, cuándo, cuántos registros y con qué resultado.",
         reporte_auditoria_cargas,
     ),
