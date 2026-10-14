@@ -330,10 +330,10 @@ section[data-testid="stSidebar"]>div{padding:.8rem .8rem 1rem!important}
 .podex-side-title{color:var(--dark);font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;margin-top:3px}
 .podex-menu-section{color:#7b8582;font-size:10px;font-weight:800;text-transform:uppercase;margin:16px 7px 6px;letter-spacing:.6px}
 .st-key-podex_menu div[data-testid="stButton"]>button,.st-key-podex_menu_admin div[data-testid="stButton"]>button,.st-key-podex_menu_reportes div[data-testid="stButton"]>button{justify-content:flex-start!important;height:auto!important;min-height:38px!important;padding:9px!important;margin:0!important;border:none!important;border-radius:7px!important;background:transparent!important;color:#40514d!important;font-size:12px!important;font-weight:600!important;box-shadow:none!important}
-.st-key-podex_menu div[data-testid="stButton"]>button:hover,.st-key-podex_menu_admin div[data-testid="stButton"]>button,.st-key-podex_menu_reportes div[data-testid="stButton"]>button:hover{background:#edf6f2!important}
-.st-key-podex_menu div[data-testid="stButton"]>button[kind="primary"],.st-key-podex_menu_admin div[data-testid="stButton"]>button,.st-key-podex_menu_reportes div[data-testid="stButton"]>button[kind="primary"]{color:#fff!important;background:linear-gradient(90deg,#0b5b4d,#147b66)!important;box-shadow:0 3px 10px rgba(11,91,77,.16)!important}
-.st-key-podex_menu div[data-testid="stButton"]>button>div,.st-key-podex_menu_admin div[data-testid="stButton"]>button,.st-key-podex_menu_reportes div[data-testid="stButton"]>button>div{justify-content:flex-start!important;width:100%!important}
-.st-key-podex_menu div[data-testid="stButton"]>button p,.st-key-podex_menu_admin div[data-testid="stButton"]>button,.st-key-podex_menu_reportes div[data-testid="stButton"]>button p{font-size:12px!important;font-weight:600!important;text-align:left!important}
+.st-key-podex_menu div[data-testid="stButton"]>button:hover,.st-key-podex_menu_admin div[data-testid="stButton"]>button:hover,.st-key-podex_menu_reportes div[data-testid="stButton"]>button:hover{background:#edf6f2!important}
+.st-key-podex_menu div[data-testid="stButton"]>button[kind="primary"],.st-key-podex_menu_admin div[data-testid="stButton"]>button[kind="primary"],.st-key-podex_menu_reportes div[data-testid="stButton"]>button[kind="primary"]{color:#fff!important;background:linear-gradient(90deg,#0b5b4d,#147b66)!important;box-shadow:0 3px 10px rgba(11,91,77,.16)!important}
+.st-key-podex_menu div[data-testid="stButton"]>button>div,.st-key-podex_menu_admin div[data-testid="stButton"]>button>div,.st-key-podex_menu_reportes div[data-testid="stButton"]>button>div{justify-content:flex-start!important;width:100%!important}
+.st-key-podex_menu div[data-testid="stButton"]>button p,.st-key-podex_menu_admin div[data-testid="stButton"]>button p,.st-key-podex_menu_reportes div[data-testid="stButton"]>button p{font-size:12px!important;font-weight:600!important;text-align:left!important}
 .st-key-podex_menu,.st-key-podex_menu_admin,.st-key-podex_menu_reportes{gap:3px!important}
 .podex-topbar{background:#fff;border:1px solid #9ec91f;border-radius:8px;min-height:64px;padding:9px 16px;display:flex;align-items:center;justify-content:space-between;box-shadow:inset 0 3px 0 var(--lime);margin-bottom:12px}
 .podex-top-title{color:var(--dark);font-size:18px;font-weight:800}.podex-top-subtitle{color:#7b8582;font-size:10px;margin-top:2px}.podex-user-pill{background:#f1f6f4;border:1px solid #dce9e4;color:#28564d;border-radius:20px;padding:7px 12px;font-size:10px;font-weight:700}.podex-top-actions{display:flex;align-items:center;gap:10px}.podex-logout{width:36px;height:36px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:linear-gradient(160deg,#C3C5C6,#403833);box-shadow:0 2px 6px rgba(64,56,51,.3);transition:transform .15s,box-shadow .15s;text-decoration:none!important}.podex-logout:hover{transform:scale(1.08);box-shadow:0 3px 10px rgba(64,56,51,.4)}
@@ -557,10 +557,13 @@ def guardar_auditoria(
     registros_funcionales,
     estado,
     observaciones,
-    usuario_carga
+    usuario_carga,
+    duplicados=0,
+    errores=0
 ):
-    """Guarda la auditoría de la carga en public."AUDITORIA"."""
-    fecha_actual = pd.Timestamp.now().to_pydatetime()
+    """Guarda la auditoría de la carga en public."AUDITORIA" con la hora de
+    Bogotá (el servidor de la aplicación puede estar en otra zona horaria)."""
+    fecha_actual = datetime.now(ZoneInfo("America/Bogota")).replace(tzinfo=None)
 
     db.execute("""
         INSERT INTO public."AUDITORIA"
@@ -572,9 +575,11 @@ def guardar_auditoria(
             "ESTADO",
             "OBSERVACIONES",
             "USUARIO_CARGA",
-            "FECHA_REGISTRO"
+            "FECHA_REGISTRO",
+            "DUPLICADOS",
+            "ERRORES"
         )
-        VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
+        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
     """, (
         nombre_archivo,
         fecha_actual,
@@ -583,7 +588,9 @@ def guardar_auditoria(
         estado,
         observaciones,
         usuario_carga,
-        fecha_actual
+        fecha_actual,
+        int(duplicados or 0),
+        int(errores or 0)
     ))
 
 @st.cache_data(show_spinner=False, max_entries=2)
@@ -688,7 +695,9 @@ def ejecutar_carga(archivo, hojas, notificar=False):
                 registros_funcionales=funcionales,
                 estado=estado_auditoria,
                 observaciones=observaciones,
-                usuario_carga=nombre_actual or usuario_actual
+                usuario_carga=nombre_actual or usuario_actual,
+                duplicados=duplicados,
+                errores=errores
             )
 
             # Confirmar solicitudes + auditoría
