@@ -25,7 +25,8 @@ TTL_CACHE = 60
 st.set_page_config(
     page_title="PODEX - Sistema de Gestión POD's Extendidos",
     page_icon="📋",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="collapsed"
 )
 
 # ============================================================
@@ -33,11 +34,20 @@ st.set_page_config(
 # ============================================================
 st.markdown("""
 <style>
-/* Barra superior de Streamlit (Share, estrella, editar, menú) */
-header[data-testid="stHeader"],
-[data-testid="stToolbar"],
+/* Barra superior de Streamlit (Share, estrella, editar, menú). La barra
+   queda invisible, pero sin display:none, porque ahí vive el botón que
+   despliega el menú lateral (ver "MENÚ LATERAL DESPLEGABLE"). */
+header[data-testid="stHeader"] {
+    background: transparent !important;
+    height: 0 !important;
+    min-height: 0 !important;
+}
 [data-testid="stDecoration"] {
     display: none !important;
+}
+/* visibility (y no display) para que el botón del menú, que está dentro de
+   la barra de herramientas, pueda seguir visible. */
+[data-testid="stToolbar"] {
     visibility: hidden !important;
     height: 0 !important;
     min-height: 0 !important;
@@ -324,7 +334,8 @@ html,body,[data-testid="stAppViewContainer"]{background:var(--bg)!important}
 [data-testid="stHeader"]{background:#fff!important;border-bottom:1px solid var(--border)}
 [data-testid="stAppViewContainer"]>.main{background:var(--bg)!important}
 .block-container{padding:1.05rem 1.45rem 2rem!important;max-width:100%!important}
-section[data-testid="stSidebar"]{background:#fff!important;border-right:1px solid #e1e5e8!important;min-width:235px!important;width:235px!important}
+section[data-testid="stSidebar"]{background:#fff!important;border-right:1px solid #e1e5e8!important}
+section[data-testid="stSidebar"][aria-expanded="true"]{min-width:235px!important;width:235px!important}
 section[data-testid="stSidebar"]>div{padding:.8rem .8rem 1rem!important}
 .podex-side-brand{padding:4px 7px 13px;border-bottom:1px solid #edf0f1;margin-bottom:10px}
 .podex-side-title{color:var(--dark);font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;margin-top:3px}
@@ -368,9 +379,53 @@ div[role="dialog"] div[data-testid="stForm"]{border-color:var(--border)!importan
 [class*="st-key-btn_danger_"] div[data-testid="stFormSubmitButton"] button{background:linear-gradient(160deg,#FF5F00,#8a2c00)!important}
 div[data-testid="stButton"]>button{border-radius:6px!important;min-height:27px!important;height:27px!important;padding:0 7px!important;font-size:11px!important;color:var(--dark)!important;border:1px solid #cfe0db!important;background:#f5f9f7!important}div[data-testid="stButton"]>button:hover{background:#e8f2ee!important;border-color:#9fc3b8!important}
 div[data-testid="stFormSubmitButton"]>button{border-radius:6px!important;min-height:32px!important;font-weight:700!important}hr{margin:8px 0!important;border-color:#e3e8e6!important}
-@media(max-width:900px){.block-container{padding:.7rem .75rem 1.5rem!important}section[data-testid="stSidebar"]{min-width:200px!important;width:200px!important}.podex-topbar{min-height:58px}}
+@media(max-width:900px){.block-container{padding:.7rem .75rem 1.5rem!important}section[data-testid="stSidebar"][aria-expanded="true"]{min-width:200px!important;width:200px!important}.podex-topbar{min-height:58px}}
 </style>
 """,unsafe_allow_html=True)
+
+# ============================================================
+# MENÚ LATERAL DESPLEGABLE
+# ============================================================
+# El menú arranca cerrado y se abre con el botón ☰ de la esquina superior
+# izquierda. Se abre flotando sobre el contenido (no lo empuja ni lo
+# encoge) y se cierra al elegir una opción o al hacer clic fuera de él.
+st.markdown("""
+<style>
+[data-testid="stExpandSidebarButton"]{visibility:visible!important;position:fixed!important;top:29px;left:22px;z-index:1000002;width:40px!important;height:40px!important;border-radius:8px!important;background:linear-gradient(160deg,#CCD32A,#004236)!important;box-shadow:0 2px 6px rgba(0,66,54,.3)!important;display:flex!important;align-items:center;justify-content:center;transition:transform .15s,box-shadow .15s}
+[data-testid="stExpandSidebarButton"]:hover{transform:scale(1.06);box-shadow:0 3px 10px rgba(0,66,54,.4)!important}
+[data-testid="stExpandSidebarButton"] span{display:none!important}
+[data-testid="stExpandSidebarButton"]::before{content:"";width:18px;height:2px;border-radius:2px;background:#fff;box-shadow:0 -6px 0 #fff,0 6px 0 #fff}
+section[data-testid="stSidebar"]{position:fixed!important;top:0;left:0;height:100vh!important;z-index:1000001!important}
+section[data-testid="stSidebar"][aria-expanded="true"]{box-shadow:6px 0 24px rgba(20,45,40,.18)!important}
+[data-testid="stSidebarResizeHandle"]{display:none!important}
+[data-testid="stSidebarCollapseButton"]{display:flex!important}
+.podex-topbar:not(.podex-dialog-header){margin-left:52px}
+/* Los bloques que solo traen estilos o scripts no deben ocupar espacio */
+[data-testid="stMainBlockContainer"] div[data-testid="stElementContainer"]:has(style),
+[data-testid="stMainBlockContainer"] div[data-testid="stElementContainer"]:has(script){display:none}
+</style>
+""",unsafe_allow_html=True)
+st.html("""
+<script>
+(() => {
+    if (window.podexMenuDesplegable) return;
+    window.podexMenuDesplegable = true;
+    const cerrar = () => {
+        const menu = document.querySelector('section[data-testid="stSidebar"]');
+        const boton = document.querySelector('[data-testid="stSidebarCollapseButton"] button');
+        if (menu && menu.getAttribute("aria-expanded") === "true" && boton) boton.click();
+    };
+    document.addEventListener("click", (e) => {
+        const menu = document.querySelector('section[data-testid="stSidebar"]');
+        if (!menu || menu.getAttribute("aria-expanded") !== "true") return;
+        if (e.target.closest('[data-testid="stExpandSidebarButton"]')) return;
+        if (!menu.contains(e.target)) return cerrar();
+        // Opción del menú elegida: cerrar después de que Streamlit la reciba.
+        if (e.target.closest('[class*="st-key-podex_menu"] button')) setTimeout(cerrar, 150);
+    }, true);
+})();
+</script>
+""", unsafe_allow_javascript=True)
 
 # ============================================================
 # ENCABEZADO DE SESIÓN / SIDEBAR
