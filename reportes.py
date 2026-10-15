@@ -1,12 +1,15 @@
 """
-Módulo de Reportes de PODEX (solo Administrador).
+Módulo de Reportes de PODEX.
 
-Cada reporte es una función que dibuja su contenido; se registran en REPORTES
-y la página muestra un selector para elegir cuál ver.
+Cada reporte es una función que dibuja su contenido (recibe el usuario
+actual); se registran en REPORTES con los perfiles que pueden verlo y la
+página muestra un selector con los reportes del perfil del usuario.
 
 Reportes disponibles:
-  - Auditoría de carga: historial de public."AUDITORIA", que se
-    llena en cada carga de solicitudes (app.py → guardar_auditoria).
+  - Auditoría de carga (Administrador): historial de public."AUDITORIA",
+    que se llena en cada carga de solicitudes (app.py → guardar_auditoria).
+  - Seguimiento de solicitudes abiertas (Operador): correo de seguimiento
+    del backlog de los POD asignados al usuario (seguimiento.py).
 """
 
 import io
@@ -16,6 +19,7 @@ import pandas as pd
 import streamlit as st
 
 from database import Database
+from seguimiento import reporte_seguimiento
 
 
 # ============================================================
@@ -77,7 +81,7 @@ def a_excel(df, hoja):
 # ============================================================
 # REPORTE: AUDITORÍA DE CARGA
 # ============================================================
-def reporte_auditoria_cargas():
+def reporte_auditoria_cargas(usuario=None):
 
     try:
         auditoria = obtener_auditoria_cargas()
@@ -222,19 +226,30 @@ def reporte_auditoria_cargas():
 # ============================================================
 # PÁGINA PRINCIPAL DEL MÓDULO
 # ============================================================
-# Clave → (nombre, descripción, función). Para agregar un reporte nuevo basta
-# con escribir su función y registrarla aquí.
+# Clave → (nombre, descripción, función, perfiles que lo ven). Para agregar un
+# reporte nuevo basta con escribir su función y registrarla aquí.
 REPORTES = {
     "auditoria_cargas": (
         "Auditoría de carga",
         "Historial de los archivos cargados: quién, cuándo, cuántos registros y con qué resultado.",
         reporte_auditoria_cargas,
+        {"ADMINISTRADOR"},
+    ),
+    "seguimiento_abiertas": (
+        "Seguimiento de solicitudes abiertas",
+        "Correo de seguimiento del backlog de sus POD: solicitudes sin cierre con la última gestión registrada.",
+        reporte_seguimiento,
+        {"OPERADOR"},
     ),
 }
 
 
-def mostrar_modulo_reportes():
-    claves = list(REPORTES)
+def mostrar_modulo_reportes(perfil, usuario):
+    perfil = str(perfil or "").strip().upper()
+    claves = [k for k, (*_, perfiles) in REPORTES.items() if perfil in perfiles]
+    if not claves:
+        st.info("ℹ️ Su perfil no tiene reportes disponibles.")
+        return
     c_sel, c_desc = st.columns([1, 2], vertical_alignment="bottom")
     with c_sel:
         clave = st.selectbox(
@@ -243,9 +258,9 @@ def mostrar_modulo_reportes():
             format_func=lambda k: REPORTES[k][0],
             key="reporte_actual",
         )
-    nombre, descripcion, funcion = REPORTES[clave]
+    nombre, descripcion, funcion, _ = REPORTES[clave]
     with c_desc:
         st.markdown(f'<div class="podex-section-caption" style="margin-bottom:12px">{descripcion}</div>',
                     unsafe_allow_html=True)
 
-    funcion()
+    funcion(usuario)

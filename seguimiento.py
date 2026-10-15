@@ -1,0 +1,388 @@
+"""
+Reporte "Seguimiento de solicitudes abiertas" (perfil Operador).
+
+Arma el correo de seguimiento del backlog para los Product Owner de los POD
+asignados al usuario: solo solicitudes sin FECHA_CIERRE ni CODIGO_CIERRE, con
+la última gestión registrada en PODEX como observación. Se puede copiar con
+formato para pegarlo en Outlook o descargar en Excel.
+"""
+
+import html
+import io
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
+import pandas as pd
+import streamlit as st
+
+from database import Database
+
+ZONA = ZoneInfo("America/Bogota")
+
+# Hoja de origen → título de la tabla (los mismos del correo de backlog).
+SECCIONES = {
+    "DETALLE_GENERAL": "DETALLE GENERAL",
+    "DETALLE_FUNCIONALES": "GRUPO FUNCIONAL ECOPETROL",
+}
+
+# Columna → ancho en % de la tabla del correo (suman 100).
+COLUMNAS = [
+    ("SOLICITUD", 16), ("CATEGORIA", 12), ("STATUS", 8), ("FECHA_APERTURA", 8),
+    ("RANGO_TIEMPO", 7), ("SUBSERVICIO_AFECTADO", 11), ("PRODUCT_OWNER", 10),
+    ("# DÍAS", 4), ("OBSERVACIÓN", 24),
+]
+
+# Color de fondo de la celda STATUS (mismo criterio en el correo y en Excel).
+COLORES_STATUS = {
+    "IN PROGRESS": "FFFF00",
+    "WORK IN PROGRESS": "FFFF00",
+    "PENDING CUSTOMER": "92D050",
+    "PENDING VENDOR": "F4B183",
+    "OPEN": "BDD7EE",
+    "SUSPENDED": "D9D9D9",
+}
+
+
+# ============================================================
+# CONSULTAS
+# ============================================================
+@st.cache_data(ttl=60, show_spinner=False)
+def obtener_pods_usuario(usuario):
+    """Product Owner (NOMBRE de PODS) de los POD asignados al usuario."""
+    db = Database()
+    try:
+        db.conectar()
+        db.execute('''
+            SELECT p."NOMBRE"
+            FROM public."PODS" p
+            JOIN public."USUARIOS_PODS" up ON up."ID_POD" = p."ID_POD"
+            WHERE up."USUARIO" = %s
+            ORDER BY p."NOMBRE"
+        ''', (usuario,))
+        return [fila[0] for fila in db.fetchall()]
+    finally:
+        db.cerrar()
+
+
+@st.cache_data(ttl=60, show_spinner=False)
+def obtener_abiertas_usuario(usuario):
+    """Solicitudes abiertas de los POD del usuario con su última gestión."""
+    db = Database()
+    try:
+        db.conectar()
+        db.execute('''
+            SELECT
+                s."ORIGEN", s."ID_SOLICITUD", s."TITULO", s."CATEGORIA",
+                s."STATUS", s."FECHA_APERTURA", s."RANGTIEMPO",
+                s."SUBSERVICIO_AFECTADO", s."PRODUCT_OWNER",
+                g."FECHA_GESTION", g."OBSERVACION"
+            FROM public."SOLICITUDES" s
+            LEFT JOIN LATERAL (
+                SELECT x."FECHA_GESTION", x."OBSERVACION"
+                FROM public."GESTIONES" x
+                WHERE x."ID_SOLICITUD" = s."ID_SOLICITUD"
+                ORDER BY x."FECHA_GESTION" DESC, x."ID_GESTION" DESC
+                LIMIT 1
+            ) g ON TRUE
+            WHERE s."FECHA_CIERRE" IS NULL
+              AND s."CODIGO_CIERRE" IS NULL
+              AND EXISTS (
+                  SELECT 1
+                  FROM public."PODS" p
+                  JOIN public."USUARIOS_PODS" up ON up."ID_POD" = p."ID_POD"
+                  WHERE up."USUARIO" = %s
+                    AND UPPER(TRIM(p."NOMBRE")) = UPPER(TRIM(s."PRODUCT_OWNER"))
+              )
+            ORDER BY s."FECHA_APERTURA" ASC
+        ''', (usuario,))
+        df = pd.DataFrame(db.fetchall(), columns=[
+            "ORIGEN", "ID_SOLICITUD", "TITULO", "CATEGORIA", "STATUS",
+            "FECHA_APERTURA", "RANGTIEMPO", "SUBSERVICIO_AFECTADO",
+            "PRODUCT_OWNER", "FECHA_GESTION", "OBSERVACION",
+        ])
+    finally:
+        db.cerrar()
+    df["FECHA_APERTURA"] = pd.to_datetime(df["FECHA_APERTURA"])
+    df["FECHA_GESTION"] = pd.to_datetime(df["FECHA_GESTION"])
+    return df
+
+
+@st.cache_data(ttl=60, show_spinner=False)
+def fecha_ultimo_archivo():
+    """Fecha de la última carga de Excel (la del archivo de Control Operativo)."""
+    db = Database()
+    try:
+        db.conectar()
+        db.execute('SELECT MAX("FECHA_CARGUE") FROM public."AUDITORIA"')
+        fila = db.fetchone()
+        return fila[0].date() if fila and fila[0] else None
+    finally:
+        db.cerrar()
+
+
+# ============================================================
+# ARMADO DEL REPORTE
+# ============================================================
+def _texto(valor):
+    return "" if valor is None or (isinstance(valor, float) and pd.isna(valor)) else str(valor).strip()
+
+
+def _nombre_propio(nombre):
+    return " ".join(p.capitalize() for p in _texto(nombre).split())
+
+
+def preparar_filas(df, hoy):
+    """Filas del reporte, en el orden y con el formato de la tabla del correo."""
+    filas = []
+    for _, r in df.iterrows():
+        apertura = r["FECHA_APERTURA"]
+        gestion = r["FECHA_GESTION"]
+        filas.append({
+            "ORIGEN": r["ORIGEN"],
+            "SOLICITUD": f'{_texto(r["ID_SOLICITUD"])} - {_texto(r["TITULO"])}'.rstrip(" -"),
+            "CATEGORIA": _texto(r["CATEGORIA"]),
+            "STATUS": _texto(r["STATUS"]),
+            "FECHA_APERTURA": f"{apertura.day}/{apertura.month}/{apertura.year} {apertura.hour}:{apertura:%M}"
+                              if pd.notna(apertura) else "",
+            "RANGO_TIEMPO": _texto(r["RANGTIEMPO"]),
+            "SUBSERVICIO_AFECTADO": _texto(r["SUBSERVICIO_AFECTADO"]),
+            "PRODUCT_OWNER": _texto(r["PRODUCT_OWNER"]),
+            "# DÍAS": (hoy - apertura.date()).days if pd.notna(apertura) else None,
+            "FECHA_OBS": f"{gestion:%d/%m/%Y}" if pd.notna(gestion) else "",
+            "OBSERVACIÓN": _texto(r["OBSERVACION"]),
+        })
+    return filas
+
+
+def _saludo(ahora):
+    if ahora.hour < 12:
+        return "buenos días"
+    return "buenas tardes" if ahora.hour < 19 else "buenas noches"
+
+
+def asunto(fecha):
+    return f"ECOPETROL | Control Operativo – Backlog Diario - Seguimiento {fecha:%d/%m/%Y}"
+
+
+def correo_html(filas, product_owners, destinatario, fecha, ahora):
+    """Cuerpo del correo con estilos en línea (Outlook ignora las hojas de estilo)."""
+    fuente = "font-family:Calibri,Arial,sans-serif;font-size:11pt;color:#000"
+    celda = "border:1px solid #7f7f7f;padding:2px 4px;vertical-align:top;font-family:Calibri,Arial,sans-serif;font-size:9pt"
+    encabezado = celda + ";background:#d9d9d9;text-align:left;font-weight:normal;word-break:break-all"
+
+    saludo = f"{html.escape(destinatario.strip())}, {_saludo(ahora)}:" if destinatario.strip() \
+        else f"{_saludo(ahora).capitalize()}:"
+    partes = [
+        f'<div style="{fuente}">',
+        f'<p style="margin:0 0 12px">{saludo}</p>',
+        '<p style="margin:0 0 8px">Envío el estado actual del seguimiento a las solicitudes de los '
+        'siguientes Product Owner, de acuerdo con el archivo de Control Operativo suministrado '
+        f'el día <b>{fecha:%d/%m/%Y}</b>:</p>',
+        '<ul style="margin:0 0 14px">' + "".join(
+            f"<li>{html.escape(_nombre_propio(po))}</li>" for po in product_owners) + "</ul>",
+    ]
+    for origen, titulo in SECCIONES.items():
+        filas_seccion = [f for f in filas if f["ORIGEN"] == origen]
+        partes.append(f'<p style="margin:16px 0 8px"><b><u>{titulo}</u></b></p>')
+        if not filas_seccion:
+            partes.append('<p style="margin:0">Sin solicitudes abiertas.</p>')
+            continue
+        tabla = ['<table cellspacing="0" cellpadding="0" style="border-collapse:collapse;width:100%;table-layout:fixed"><tr>']
+        tabla += [f'<th style="{encabezado};width:{ancho}%">{c}</th>' for c, ancho in COLUMNAS]
+        tabla.append("</tr>")
+        for f in filas_seccion:
+            color = COLORES_STATUS.get(f["STATUS"].upper())
+            obs = (f'<b>{f["FECHA_OBS"]}:</b> {html.escape(f["OBSERVACIÓN"])}' if f["OBSERVACIÓN"]
+                   else "<i>Sin gestión registrada</i>")
+            tabla.append(
+                "<tr>"
+                f'<td style="{celda}">{html.escape(f["SOLICITUD"])}</td>'
+                f'<td style="{celda}">{html.escape(f["CATEGORIA"])}</td>'
+                f'<td style="{celda}' + (f';background:#{color}' if color else "") + f'">{html.escape(f["STATUS"])}</td>'
+                f'<td style="{celda};text-align:right;white-space:nowrap">{f["FECHA_APERTURA"]}</td>'
+                f'<td style="{celda};white-space:nowrap">{html.escape(f["RANGO_TIEMPO"])}</td>'
+                f'<td style="{celda}">{html.escape(f["SUBSERVICIO_AFECTADO"])}</td>'
+                f'<td style="{celda}">{html.escape(f["PRODUCT_OWNER"])}</td>'
+                f'<td style="{celda};text-align:right">{"" if f["# DÍAS"] is None else f["# DÍAS"]}</td>'
+                f'<td style="{celda}">{obs}</td>'
+                "</tr>"
+            )
+        tabla.append("</table>")
+        partes.append("".join(tabla))
+    partes.append("</div>")
+    return "".join(partes)
+
+
+def correo_excel(filas, product_owners, destinatario, fecha, ahora):
+    """El mismo seguimiento en Excel: encabezado del correo y una tabla por sección."""
+    from openpyxl import Workbook
+    from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+    from openpyxl.utils import get_column_letter
+
+    libro = Workbook()
+    ws = libro.active
+    ws.title = "SEGUIMIENTO"
+    ws.sheet_view.showGridLines = False
+
+    delgado = Side(style="thin", color="7F7F7F")
+    borde = Border(left=delgado, right=delgado, top=delgado, bottom=delgado)
+    arriba = Alignment(vertical="top", wrap_text=True)
+    normal = Font(name="Calibri", size=10)
+
+    ws.cell(1, 1, asunto(fecha)).font = Font(name="Calibri", size=13, bold=True)
+    ws.cell(2, 1, f"Product Owner: {', '.join(_nombre_propio(po) for po in product_owners)}").font = normal
+    ws.cell(3, 1, f"Archivo de Control Operativo del {fecha:%d/%m/%Y} · Generado el {ahora:%d/%m/%Y %H:%M}").font = normal
+
+    fila = 5
+    for origen, titulo in SECCIONES.items():
+        filas_seccion = [f for f in filas if f["ORIGEN"] == origen]
+        ws.cell(fila, 1, titulo).font = Font(name="Calibri", size=11, bold=True, underline="single")
+        fila += 1
+        if not filas_seccion:
+            ws.cell(fila, 1, "Sin solicitudes abiertas.").font = normal
+            fila += 2
+            continue
+        for c, (columna, _) in enumerate(COLUMNAS, start=1):
+            celda = ws.cell(fila, c, columna)
+            celda.font, celda.border, celda.alignment = normal, borde, arriba
+            celda.fill = PatternFill("solid", fgColor="D9D9D9")
+        fila += 1
+        for f in filas_seccion:
+            obs = f'{f["FECHA_OBS"]}: {f["OBSERVACIÓN"]}' if f["OBSERVACIÓN"] else "Sin gestión registrada"
+            valores = [f["SOLICITUD"], f["CATEGORIA"], f["STATUS"], f["FECHA_APERTURA"],
+                       f["RANGO_TIEMPO"], f["SUBSERVICIO_AFECTADO"], f["PRODUCT_OWNER"], f["# DÍAS"], obs]
+            for c, valor in enumerate(valores, start=1):
+                celda = ws.cell(fila, c, valor)
+                celda.font, celda.border, celda.alignment = normal, borde, arriba
+            color = COLORES_STATUS.get(f["STATUS"].upper())
+            if color:
+                ws.cell(fila, 3).fill = PatternFill("solid", fgColor=color)
+            fila += 1
+        fila += 1
+
+    for c, ancho in enumerate([42, 30, 16, 16, 12, 22, 24, 8, 70], start=1):
+        ws.column_dimensions[get_column_letter(c)].width = ancho
+
+    salida = io.BytesIO()
+    libro.save(salida)
+    return salida.getvalue()
+
+
+def boton_copiar():
+    """Botón que copia el correo con formato (para pegarlo en Outlook).
+
+    Copia la vista previa del correo (el bloque con id "podex-correo-seguimiento").
+    El clic lo atiende un escuchador instalado una sola vez en un bloque aparte:
+    Streamlit solo ejecuta los scripts de st.html cuando el bloque no trae más
+    contenido.
+    """
+    st.html("""
+<button id="podex-copiar-seguimiento" title="Copiar para el correo"
+  style="width:40px;height:40px;border-radius:50%;border:none;cursor:pointer;color:#fff;font-size:18px;
+         background:linear-gradient(160deg,#CCD32A,#004236);box-shadow:0 2px 6px rgba(20,60,90,.25)">⧉</button>
+""", width="content")
+    st.html("""
+<script>
+(() => {
+    if (window.podexCopiarSeguimiento) return;
+    window.podexCopiarSeguimiento = true;
+    document.addEventListener("click", async (e) => {
+        const boton = e.target.closest("#podex-copiar-seguimiento");
+        if (!boton) return;
+        const contenido = document.getElementById("podex-correo-seguimiento").innerHTML;
+        const temporal = document.createElement("div");
+        temporal.innerHTML = contenido;
+        try {
+            await navigator.clipboard.write([new ClipboardItem({
+                "text/html": new Blob([contenido], {type: "text/html"}),
+                "text/plain": new Blob([temporal.innerText], {type: "text/plain"}),
+            })]);
+            boton.textContent = "✓";
+            boton.title = "Copiado. Péguelo en el correo con Ctrl+V.";
+        } catch (err) {
+            boton.textContent = "✕";
+            boton.title = "El navegador no permitió copiar: " + err;
+        }
+        setTimeout(() => { boton.textContent = "⧉"; boton.title = "Copiar para el correo"; }, 2500);
+    });
+})();
+</script>
+""", width="content", unsafe_allow_javascript=True)
+
+
+# ============================================================
+# REPORTE
+# ============================================================
+def reporte_seguimiento(usuario):
+    try:
+        pods = obtener_pods_usuario(usuario)
+        abiertas = obtener_abiertas_usuario(usuario)
+        fecha_archivo = fecha_ultimo_archivo()
+    except Exception as e:
+        st.error("❌ No fue posible consultar las solicitudes abiertas.")
+        st.exception(e)
+        return
+
+    if not pods:
+        st.info("ℹ️ No tiene POD asignados. Solicite al administrador que se los asigne desde el módulo Usuarios.")
+        return
+
+    ahora = datetime.now(ZONA).replace(tzinfo=None)
+
+    c1, c2, c3 = st.columns([2.2, 1.2, 1])
+    with c1:
+        seleccion = st.multiselect("Product Owner", pods, default=pods, key="seg_product_owners",
+                                   placeholder="Seleccione uno o varios Product Owner")
+    with c2:
+        destinatario = st.text_input("Destinatario (saludo)", key="seg_destinatario",
+                                     placeholder="Ej: Florinda")
+    with c3:
+        fecha = st.date_input("Fecha del archivo", value=fecha_archivo or ahora.date(),
+                              format="DD/MM/YYYY", key="seg_fecha",
+                              help="Fecha del archivo de Control Operativo. Por defecto, la de la última carga.")
+
+    if not seleccion:
+        st.info("ℹ️ Seleccione al menos un Product Owner.")
+        return
+
+    elegidos = {" ".join(str(po).split()).upper() for po in seleccion}
+    datos = abiertas[abiertas["PRODUCT_OWNER"].map(lambda po: " ".join(str(po or "").split()).upper()).isin(elegidos)]
+    filas = preparar_filas(datos, ahora.date())
+
+    dias = [f["# DÍAS"] for f in filas if f["# DÍAS"] is not None]
+    a, b, c, d = st.columns(4)
+    a.metric("Solicitudes abiertas", len(filas))
+    b.metric("0-5 días", sum(1 for x in dias if x <= 5))
+    c.metric("Más de 5 días", sum(1 for x in dias if x > 5))
+    d.metric("Sin gestión registrada", sum(1 for f in filas if not f["OBSERVACIÓN"]))
+
+    cuerpo = correo_html(filas, seleccion, destinatario, fecha, ahora)
+
+    with st.container(border=True):
+        c_titulo, c_acciones = st.columns([4, 1], vertical_alignment="center")
+        with c_titulo:
+            st.markdown('<div class="podex-section-title">✉️ Seguimiento listo para el correo</div>', unsafe_allow_html=True)
+            st.markdown('<div class="podex-section-caption">Solo solicitudes sin FECHA_CIERRE ni CODIGO_CIERRE · '
+                        'Observación = última gestión registrada en PODEX · # DÍAS calculado a hoy.</div>',
+                        unsafe_allow_html=True)
+        with c_acciones:
+            with st.container(key="acciones_rep_seguimiento", horizontal=True,
+                              horizontal_alignment="right", vertical_alignment="center"):
+                boton_copiar()
+                st.download_button(
+                    "",
+                    data=correo_excel(filas, seleccion, destinatario, fecha, ahora),
+                    file_name=f"Seguimiento_backlog_{fecha:%d%m%Y}.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    icon=":material/download:",
+                    key="btn_rep_descargar_seguimiento",
+                    help="Descargar en Excel",
+                )
+
+        st.markdown("**Asunto** (use el ícono de la derecha para copiarlo):")
+        st.code(asunto(fecha), language=None)
+        st.html(f'<div style="background:#fff;border-top:1px dashed #cfd8d6;padding-top:12px;overflow-x:auto">'
+                f'<div id="podex-correo-seguimiento">{cuerpo}</div></div>')
+        st.caption("⧉ copia el correo con formato y colores: péguelo en Outlook con Ctrl+V. "
+                   "Colores de STATUS: amarillo = In Progress / Work In Progress · verde = Pending Customer · "
+                   "naranja = Pending Vendor · azul = Open · gris = Suspended.")

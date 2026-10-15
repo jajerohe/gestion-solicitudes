@@ -9,7 +9,8 @@ Sistema Integrado de Gestión de Peticiones, Incidentes y Vulnerabilidades, en S
 | `app.py` | Inicio de sesión, menú, estilos, página de Solicitudes y página de Cargar solicitudes |
 | `usuarios.py` | Módulo de Usuarios y funciones de interfaz compartidas (`encabezado_ventana`, `ficha`, `seccion`) |
 | `pods.py` | Módulo de POD's |
-| `reportes.py` | Módulo de Reportes (por ahora: Auditoría de carga) |
+| `reportes.py` | Módulo de Reportes: Auditoría de carga (Administrador) y Seguimiento de solicitudes abiertas (Operador) |
+| `seguimiento.py` | Reporte de seguimiento del backlog para el correo (Operador) |
 | `excel_web.py` | Lectura, vista previa y carga del Excel (`DETALLE_GENERAL`, `DETALLE_FUNCIONALES`) |
 | `correo.py` | Correo de bienvenida a los usuarios nuevos |
 | `auth.py` | Inicio de sesión con Supabase Auth |
