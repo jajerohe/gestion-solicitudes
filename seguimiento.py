@@ -164,6 +164,18 @@ def asunto(fecha):
     return f"ECOPETROL | Control Operativo – Backlog Diario - Seguimiento {fecha:%d/%m/%Y}"
 
 
+# Etiqueta de STATUS en el correo enviado desde PODEX (paleta del sistema):
+# (fondo, texto).
+ETIQUETAS_STATUS = {
+    "IN PROGRESS": ("#CCD32A", "#17342f"),
+    "WORK IN PROGRESS": ("#CCD32A", "#17342f"),
+    "PENDING CUSTOMER": ("#F7DB17", "#17342f"),
+    "PENDING VENDOR": ("#FF5F00", "#ffffff"),
+    "OPEN": ("#2f6db5", "#ffffff"),
+    "SUSPENDED": ("#C3C5C6", "#17342f"),
+}
+
+
 def correo_para_enviar(filas, product_owners, destinatario, fecha, ahora):
     """(asunto, texto, html) del seguimiento con el diseño del correo de
     backlog: marca Ecopetrol, tarjetas por sección y la paleta del sistema."""
