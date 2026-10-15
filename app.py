@@ -12,10 +12,12 @@ from excel_web import (
 from auth import iniciar_sesion, cerrar_sesion
 from usuarios import (
     mostrar_modulo_usuarios, encabezado_ventana, ficha, seccion, obtener_pods,
-    obtener_usuarios, obtener_cliente_admin
+    obtener_cliente_admin
 )
-from correo import configuracion_correo, enviar_correo_backlog, nombre_backlog
+from correo import configuracion_correo, construir_correo_backlog, nombre_backlog
+from envios import mostrar_envio_pendiente, programar_envio
 from pods import mostrar_modulo_pods
+from listas import mostrar_modulo_listas
 from reportes import mostrar_modulo_reportes
 
 # Tiempo máximo (segundos) que se reutilizan los datos consultados entre
@@ -324,7 +326,7 @@ es_operador = str(perfil_actual or "").strip().lower() == "operador"
 # administrador y el operador (cada uno ve sus propios reportes).
 PAGINAS_PERMITIDAS = {"solicitudes"}
 if es_administrador:
-    PAGINAS_PERMITIDAS |= {"cargar", "usuarios", "pods", "reportes"}
+    PAGINAS_PERMITIDAS |= {"cargar", "usuarios", "pods", "listas", "reportes"}
 if es_operador:
     PAGINAS_PERMITIDAS |= {"reportes"}
 if st.session_state.get("pagina_actual") not in PAGINAS_PERMITIDAS:
@@ -374,16 +376,16 @@ div[role="dialog"] div[data-testid="stForm"]{border-color:var(--border)!importan
 [class*="st-key-acciones_"] div[data-testid="stButton"] button:hover,[class*="st-key-acciones_"] div[data-testid="stFormSubmitButton"] button:hover,[class*="st-key-acciones_"] div[data-testid="stDownloadButton"] button:hover{transform:scale(1.08);box-shadow:0 3px 10px rgba(20,60,90,.35)!important}
 [class*="st-key-acciones_"] div[data-testid="stButton"] button:disabled,[class*="st-key-acciones_"] div[data-testid="stFormSubmitButton"] button:disabled{opacity:.35;transform:none;box-shadow:none!important}
 [class*="st-key-acciones_"] div[data-testid="stButton"] button span,[class*="st-key-acciones_"] div[data-testid="stFormSubmitButton"] button span,[class*="st-key-acciones_"] div[data-testid="stDownloadButton"] button span{color:#fff!important;font-size:20px!important;margin:0!important}
-.st-key-btn_gestionar div[data-testid="stButton"] button,.st-key-btn_usr_nuevo div[data-testid="stButton"] button,.st-key-btn_cargar div[data-testid="stButton"] button,.st-key-btn_pod_nuevo div[data-testid="stButton"] button{background:linear-gradient(160deg,#CCD32A,#004236)!important}
-.st-key-btn_ver_gestion div[data-testid="stButton"] button,.st-key-btn_rep_descargar div[data-testid="stDownloadButton"] button,.st-key-btn_usr_editar div[data-testid="stButton"] button,.st-key-btn_pod_editar div[data-testid="stButton"] button{background:linear-gradient(160deg,#2f6db5,#00214D)!important}
-.st-key-btn_actualizar div[data-testid="stButton"] button,.st-key-btn_usr_estado div[data-testid="stButton"] button{background:linear-gradient(160deg,#F7DB17,#FF5F00)!important}
+.st-key-btn_gestionar div[data-testid="stButton"] button,.st-key-btn_usr_nuevo div[data-testid="stButton"] button,.st-key-btn_cargar div[data-testid="stButton"] button,.st-key-btn_pod_nuevo div[data-testid="stButton"] button,.st-key-btn_lista_nueva div[data-testid="stButton"] button{background:linear-gradient(160deg,#CCD32A,#004236)!important}
+.st-key-btn_ver_gestion div[data-testid="stButton"] button,.st-key-btn_rep_descargar div[data-testid="stDownloadButton"] button,.st-key-btn_usr_editar div[data-testid="stButton"] button,.st-key-btn_pod_editar div[data-testid="stButton"] button,.st-key-btn_lista_editar div[data-testid="stButton"] button{background:linear-gradient(160deg,#2f6db5,#00214D)!important}
+.st-key-btn_actualizar div[data-testid="stButton"] button,.st-key-btn_usr_estado div[data-testid="stButton"] button,.st-key-btn_lista_estado div[data-testid="stButton"] button{background:linear-gradient(160deg,#F7DB17,#FF5F00)!important}
 .st-key-btn_usr_clave div[data-testid="stButton"] button{background:linear-gradient(160deg,#C3C5C6,#403833)!important}
-.st-key-btn_usr_eliminar div[data-testid="stButton"] button,.st-key-btn_pod_eliminar div[data-testid="stButton"] button{background:linear-gradient(160deg,#FF5F00,#8a2c00)!important}
-[class*="st-key-btn_ok_"] div[data-testid="stFormSubmitButton"] button{background:linear-gradient(160deg,#CCD32A,#004236)!important}
-[class*="st-key-btn_info_"] div[data-testid="stFormSubmitButton"] button{background:linear-gradient(160deg,#2f6db5,#00214D)!important}
-[class*="st-key-btn_warn_"] div[data-testid="stFormSubmitButton"] button{background:linear-gradient(160deg,#F7DB17,#FF5F00)!important}
-[class*="st-key-btn_neutral_"] div[data-testid="stFormSubmitButton"] button,[class*="st-key-btn_cancel_"] div[data-testid="stFormSubmitButton"] button{background:linear-gradient(160deg,#C3C5C6,#403833)!important}
-[class*="st-key-btn_danger_"] div[data-testid="stFormSubmitButton"] button{background:linear-gradient(160deg,#FF5F00,#8a2c00)!important}
+.st-key-btn_usr_eliminar div[data-testid="stButton"] button,.st-key-btn_pod_eliminar div[data-testid="stButton"] button,.st-key-btn_lista_eliminar div[data-testid="stButton"] button{background:linear-gradient(160deg,#FF5F00,#8a2c00)!important}
+[class*="st-key-btn_ok_"] div[data-testid="stFormSubmitButton"] button,[class*="st-key-btn_ok_"] div[data-testid="stButton"] button{background:linear-gradient(160deg,#CCD32A,#004236)!important}
+[class*="st-key-btn_info_"] div[data-testid="stFormSubmitButton"] button,[class*="st-key-btn_info_"] div[data-testid="stButton"] button{background:linear-gradient(160deg,#2f6db5,#00214D)!important}
+[class*="st-key-btn_warn_"] div[data-testid="stFormSubmitButton"] button,[class*="st-key-btn_warn_"] div[data-testid="stButton"] button{background:linear-gradient(160deg,#F7DB17,#FF5F00)!important}
+[class*="st-key-btn_neutral_"] div[data-testid="stFormSubmitButton"] button,[class*="st-key-btn_cancel_"] div[data-testid="stFormSubmitButton"] button,[class*="st-key-btn_cancel_"] div[data-testid="stButton"] button{background:linear-gradient(160deg,#C3C5C6,#403833)!important}
+[class*="st-key-btn_danger_"] div[data-testid="stFormSubmitButton"] button,[class*="st-key-btn_danger_"] div[data-testid="stButton"] button{background:linear-gradient(160deg,#FF5F00,#8a2c00)!important}
 div[data-testid="stButton"]>button{border-radius:6px!important;min-height:27px!important;height:27px!important;padding:0 7px!important;font-size:11px!important;color:var(--dark)!important;border:1px solid #cfe0db!important;background:#f5f9f7!important}div[data-testid="stButton"]>button:hover{background:#e8f2ee!important;border-color:#9fc3b8!important}
 div[data-testid="stFormSubmitButton"]>button{border-radius:6px!important;min-height:32px!important;font-weight:700!important}hr{margin:8px 0!important;border-color:#e3e8e6!important}
 @media(max-width:900px){.block-container{padding:.7rem .75rem 1.5rem!important}section[data-testid="stSidebar"][aria-expanded="true"]{min-width:200px!important;width:200px!important}.podex-topbar{min-height:58px}}
@@ -455,7 +457,8 @@ with st.sidebar:
 
     if es_administrador:
         st.markdown('<div class="podex-menu-section">Administración</div>',unsafe_allow_html=True)
-        mostrar_menu("podex_menu_admin", [("usuarios", "👥  Usuarios"), ("pods", "🧩  POD's")])
+        mostrar_menu("podex_menu_admin", [("usuarios", "👥  Usuarios"), ("pods", "🧩  POD's"),
+                                           ("listas", "📧  Listas de correo")])
 
     st.markdown('<div class="podex-menu-section">Operaciones</div>',unsafe_allow_html=True)
 
@@ -477,6 +480,7 @@ TITULOS_PAGINA = {
     "cargar": "Cargar Solicitudes",
     "usuarios": "Administración de Usuarios",
     "pods": "Administración de POD's",
+    "listas": "Listas de correo",
     "reportes": "Reportes",
 }
 
@@ -489,6 +493,9 @@ st.markdown(f"""
 
 st.markdown('<div style="height:8px"></div>',unsafe_allow_html=True)
 
+# Vista previa de un correo preparado en la interacción anterior (envios.py).
+mostrar_envio_pendiente()
+
 # ============================================================
 # ADMINISTRACIÓN DE POD'S Y USUARIOS — SOLO ADMINISTRADOR
 # ============================================================
@@ -498,6 +505,10 @@ if es_administrador and pagina_actual == "pods":
 
 if es_administrador and pagina_actual == "usuarios":
     mostrar_modulo_usuarios(usuario_actual)
+    st.stop()
+
+if es_administrador and pagina_actual == "listas":
+    mostrar_modulo_listas(usuario_actual)
     st.stop()
 
 # ============================================================
@@ -683,44 +694,37 @@ def resumen_carga(archivo, hojas):
     }
 
 
-def notificar_carga(resumen, archivo_bytes):
-    """Envía un solo correo de backlog (con el Excel adjunto) a los usuarios
-    activos de perfil Operador. Devuelve (tipo, mensaje)."""
+def preparar_correo_backlog(resumen, archivo_bytes):
+    """Prepara el correo de backlog (con el Excel adjunto) para la vista
+    previa; los destinatarios se eligen allí entre las listas del envío
+    BACKLOG. Devuelve (tipo, mensaje) solo si hay un aviso que mostrar."""
+    # El adjunto lleva aplicado el filtro de PRODUCT_OWNER con los PODS
+    # registrados y la hoja JDU con las tablas del correo; si no se puede
+    # preparar, se adjunta el archivo original.
+    aviso = None
     try:
-        usuarios = obtener_usuarios()
-        correos = usuarios.loc[
-            (usuarios["ACTIVO"] == True)  # noqa: E712
-            & usuarios["CORREO"].notna()
-            & (usuarios["PERFIL"].astype(str).str.strip().str.upper() == "OPERADOR"),
-            "CORREO"
-        ].tolist()
-        if not correos:
-            return "warning", "⚠️ No hay usuarios Operador activos con correo para notificar la carga."
-
-        # El adjunto lleva aplicado el filtro de PRODUCT_OWNER con los PODS
-        # registrados y la hoja JDU con las tablas del correo; si no se puede
-        # preparar, se envía el archivo original.
-        aviso_adjunto = ""
-        try:
-            with st.spinner("Preparando el adjunto (filtro de PODS y hoja JDU)..."):
-                adjunto = filtrar_adjunto(
-                    archivo_bytes,
-                    obtener_pods()["NOMBRE"].dropna().tolist(),
-                    tablas_jdu=(resumen["general"], resumen["funcional"]),
-                )
-        except Exception as e:
-            adjunto = archivo_bytes
-            aviso_adjunto = f" No fue posible preparar el adjunto con el filtro de PODS y la hoja JDU ({e}); se envió el archivo original."
-
-        with st.spinner("Enviando el resumen de la carga por correo..."):
-            enviados = enviar_correo_backlog(correos, resumen, adjunto)
+        with st.spinner("Preparando el adjunto (filtro de PODS y hoja JDU)..."):
+            adjunto = filtrar_adjunto(
+                archivo_bytes,
+                obtener_pods()["NOMBRE"].dropna().tolist(),
+                tablas_jdu=(resumen["general"], resumen["funcional"]),
+            )
     except Exception as e:
-        return "warning", f"⚠️ La carga se guardó, pero no fue posible enviar el resumen por correo: {e}"
+        adjunto = archivo_bytes
+        aviso = ("warning", f"⚠️ No fue posible preparar el adjunto con el filtro de PODS y la hoja JDU ({e}); "
+                            "el correo lleva el archivo original.")
 
-    if aviso_adjunto:
-        return "warning", (f"⚠️ Correo de backlog ({nombre_backlog(resumen['archivo'])}) enviado a "
-                           f"{enviados} usuario(s) Operador activo(s).{aviso_adjunto}")
-    return "info", f"📧 Correo de backlog ({nombre_backlog(resumen['archivo'])}) enviado a {enviados} usuario(s) Operador activo(s)."
+    try:
+        asunto, texto, html = construir_correo_backlog(resumen)
+    except Exception as e:
+        return "warning", f"⚠️ La carga se guardó, pero no fue posible preparar el correo de backlog: {e}"
+
+    programar_envio(
+        "Correo de backlog", asunto, texto, html, envio="BACKLOG",
+        adjuntos=[(resumen["archivo"], adjunto)],
+        aviso_ok=f"Correo de backlog ({nombre_backlog(resumen['archivo'])}) enviado",
+    )
+    return aviso
 
 
 def ejecutar_carga(archivo, hojas, notificar=False):
@@ -777,8 +781,9 @@ def ejecutar_carga(archivo, hojas, notificar=False):
         }
 
         # El correo es informativo: si falla, la carga ya quedó guardada.
+        # Se envía después, desde la vista previa (envios.py).
         if notificar:
-            st.session_state["resultado_carga"]["correo"] = notificar_carga(
+            st.session_state["resultado_carga"]["correo"] = preparar_correo_backlog(
                 resumen_carga(archivo, hojas), archivo.getvalue()
             )
 
@@ -819,11 +824,12 @@ def ventana_confirmar_carga(archivo, preview, hojas):
     with st.form("form_confirmar_carga"):
         puede_notificar = configuracion_correo() is not None and obtener_cliente_admin() is not None
         notificar = st.checkbox(
-            "Enviar correo de backlog a los usuarios Operador activos",
+            "Preparar el correo de backlog (vista previa antes de enviar)",
             value=puede_notificar,
             disabled=not puede_notificar,
             help=(
-                "Se envía un solo correo con las tablas del backlog y el Excel adjunto a los usuarios Operador activos."
+                "Al terminar la carga se muestra el correo con las tablas del backlog y el Excel adjunto; "
+                "allí elige la lista de correo y decide si lo envía."
                 if puede_notificar else
                 "Requiere la sección [email] y supabase.service_role_key en los secretos."
             )

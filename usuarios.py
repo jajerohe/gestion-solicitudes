@@ -21,7 +21,7 @@ import streamlit as st
 from supabase import create_client, Client
 
 from database import Database
-from correo import configuracion_correo, enviar_correo_bienvenida
+from correo import APP_URL_DEFECTO, configuracion_correo, construir_correo_bienvenida
 
 # Duración usada para desactivar una cuenta en Supabase Auth (~100 años).
 DURACION_DESACTIVACION = "876000h"
@@ -279,12 +279,12 @@ def ventana_crear_usuario(perfiles, pods_df):
 
         correo_configurado = configuracion_correo() is not None
         enviar_bienvenida = st.checkbox(
-            "Enviar correo de bienvenida con los datos de acceso",
+            "Preparar el correo de bienvenida (vista previa antes de enviar)",
             value=correo_configurado,
             disabled=not correo_configurado,
             help=(
-                "Se envía al correo registrado: dirección de acceso, usuario, perfil, "
-                "PODs, contraseña temporal y procedimiento de ingreso."
+                "Al crear el usuario se muestra el correo (dirección de acceso, usuario, perfil, "
+                "PODs, contraseña temporal y procedimiento de ingreso) y allí decide si lo envía."
                 if correo_configurado else
                 "Configure la sección [email] en los secretos de la aplicación para habilitar el envío."
             )
@@ -352,27 +352,36 @@ def ventana_crear_usuario(perfiles, pods_df):
     if not enviar_bienvenida:
         notificar(f"✅ Usuario {usuario} creado correctamente.")
 
-    # El usuario ya quedó creado; un fallo en el correo solo genera un aviso.
+    # El usuario ya quedó creado; el correo se revisa en la vista previa
+    # (envios.py) y se envía desde allí. Un fallo al prepararlo solo avisa.
     try:
+        from envios import programar_envio  # aquí para evitar la importación circular
+
         nombres_pods = dict(zip(pods_df["ID_POD"], pods_df["NOMBRE"]))
-        with st.spinner("Enviando correo de bienvenida..."):
-            enviar_correo_bienvenida(
-                nombre=nombre,
-                usuario=usuario,
-                correo=correo,
-                perfil=perfil,
-                pods=[(p, nombres_pods.get(p, "")) for p in pods],
-                contrasena=contrasena,
-                descripcion_perfil=obtener_descripcion_perfil(perfil),
-            )
+        config = configuracion_correo() or {}
+        asunto, texto, html = construir_correo_bienvenida(
+            nombre=nombre,
+            usuario=usuario,
+            correo=correo,
+            perfil=perfil,
+            pods=[(p, nombres_pods.get(p, "")) for p in pods],
+            contrasena=contrasena,
+            app_url=config.get("app_url") or APP_URL_DEFECTO,
+            descripcion_perfil=obtener_descripcion_perfil(perfil),
+        )
+        programar_envio(
+            "Correo de bienvenida", asunto, texto, html,
+            destinatarios={"PARA": [correo], "CC": [], "CCO": []},
+            aviso_ok=f"Correo de bienvenida de {usuario} enviado",
+        )
     except Exception as e:
         notificar(
-            f"✅ Usuario {usuario} creado correctamente, pero no fue posible enviar "
+            f"✅ Usuario {usuario} creado correctamente, pero no fue posible preparar "
             f"el correo de bienvenida a {correo}: {e}",
             tipo="warning"
         )
 
-    notificar(f"✅ Usuario {usuario} creado correctamente. Se envió el correo de bienvenida a {correo}.")
+    notificar(f"✅ Usuario {usuario} creado correctamente. Revise el correo de bienvenida antes de enviarlo.")
 
 
 @st.dialog(" ", width="large")
