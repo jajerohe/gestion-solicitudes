@@ -829,7 +829,7 @@ def ventana_confirmar_carga(archivo, preview, hojas):
             disabled=not puede_notificar,
             help=(
                 "Al terminar la carga se muestra el correo con las tablas del backlog y el Excel adjunto; "
-                "allí elige la lista de correo y decide si lo envía."
+                "va a los destinatarios configurados en Administración → Listas de correo y allí decide si lo envía."
                 if puede_notificar else
                 "Requiere la sección [email] y supabase.service_role_key en los secretos."
             )
