@@ -164,23 +164,14 @@ def asunto(fecha):
     return f"ECOPETROL | Control Operativo – Backlog Diario - Seguimiento {fecha:%d/%m/%Y}"
 
 
-def correo_html(filas, product_owners, destinatario, fecha, ahora):
-    """Cuerpo del correo con estilos en línea (Outlook ignora las hojas de estilo)."""
+def tablas_html(filas):
+    """Tablas DETALLE GENERAL y GRUPO FUNCIONAL ECOPETROL que se muestran en
+    pantalla (el correo que se envía se arma en correo_para_enviar)."""
     fuente = "font-family:Calibri,Arial,sans-serif;font-size:11pt;color:#000"
     celda = "border:1px solid #7f7f7f;padding:2px 4px;vertical-align:top;font-family:Calibri,Arial,sans-serif;font-size:9pt"
     encabezado = celda + ";background:#d9d9d9;text-align:left;font-weight:normal;word-break:break-all"
 
-    saludo = f"{html.escape(destinatario.strip())}, {_saludo(ahora)}:" if destinatario.strip() \
-        else f"{_saludo(ahora).capitalize()}:"
-    partes = [
-        f'<div style="{fuente}">',
-        f'<p style="margin:0 0 12px">{saludo}</p>',
-        '<p style="margin:0 0 8px">Envío el estado actual del seguimiento a las solicitudes de los '
-        'siguientes Product Owner, de acuerdo con el archivo de Control Operativo suministrado '
-        f'el día <b>{fecha:%d/%m/%Y}</b>:</p>',
-        '<ul style="margin:0 0 14px">' + "".join(
-            f"<li>{html.escape(_nombre_propio(po))}</li>" for po in product_owners) + "</ul>",
-    ]
+    partes = [f'<div style="{fuente}">']
     for origen, titulo in SECCIONES.items():
         filas_seccion = [f for f in filas if f["ORIGEN"] == origen]
         partes.append(f'<p style="margin:16px 0 8px"><b><u>{titulo}</u></b></p>')
@@ -353,48 +344,6 @@ def correo_excel(filas, product_owners, destinatario, fecha, ahora):
     return salida.getvalue()
 
 
-def boton_copiar():
-    """Botón que copia el correo con formato (para pegarlo en Outlook).
-
-    Copia la vista previa del correo (el bloque con id "podex-correo-seguimiento").
-    El clic lo atiende un escuchador instalado una sola vez en un bloque aparte:
-    Streamlit solo ejecuta los scripts de st.html cuando el bloque no trae más
-    contenido.
-    """
-    st.html("""
-<button id="podex-copiar-seguimiento" title="Copiar para el correo"
-  style="width:40px;height:40px;border-radius:50%;border:none;cursor:pointer;color:#fff;font-size:18px;
-         background:linear-gradient(160deg,#CCD32A,#004236);box-shadow:0 2px 6px rgba(20,60,90,.25)">⧉</button>
-""", width="content")
-    st.html("""
-<script>
-(() => {
-    if (window.podexCopiarSeguimiento) return;
-    window.podexCopiarSeguimiento = true;
-    document.addEventListener("click", async (e) => {
-        const boton = e.target.closest("#podex-copiar-seguimiento");
-        if (!boton) return;
-        const contenido = document.getElementById("podex-correo-seguimiento").innerHTML;
-        const temporal = document.createElement("div");
-        temporal.innerHTML = contenido;
-        try {
-            await navigator.clipboard.write([new ClipboardItem({
-                "text/html": new Blob([contenido], {type: "text/html"}),
-                "text/plain": new Blob([temporal.innerText], {type: "text/plain"}),
-            })]);
-            boton.textContent = "✓";
-            boton.title = "Copiado. Péguelo en el correo con Ctrl+V.";
-        } catch (err) {
-            boton.textContent = "✕";
-            boton.title = "El navegador no permitió copiar: " + err;
-        }
-        setTimeout(() => { boton.textContent = "⧉"; boton.title = "Copiar para el correo"; }, 2500);
-    });
-})();
-</script>
-""", width="content", unsafe_allow_javascript=True)
-
-
 # ============================================================
 # REPORTE
 # ============================================================
@@ -431,7 +380,7 @@ def reporte_seguimiento(usuario):
     c.metric("Más de 5 días", sum(1 for x in dias if x > 5))
     d.metric("Sin gestión registrada", sum(1 for f in filas if not f["OBSERVACIÓN"]))
 
-    cuerpo = correo_html(filas, seleccion, destinatario, fecha, ahora)
+    cuerpo = tablas_html(filas)
 
     with st.container(border=True):
         c_titulo, c_acciones = st.columns([4, 1], vertical_alignment="center")
@@ -443,7 +392,6 @@ def reporte_seguimiento(usuario):
         with c_acciones:
             with st.container(key="acciones_rep_seguimiento", horizontal=True,
                               horizontal_alignment="right", vertical_alignment="center"):
-                boton_copiar()
                 enviar = st.button("", icon=":material/send:", key="btn_ok_rep_enviar_seguimiento",
                                    help="Enviar por correo (con vista previa)")
                 st.download_button(
@@ -469,11 +417,8 @@ def reporte_seguimiento(usuario):
             )
             st.rerun()
 
-        st.markdown("**Asunto** (use el ícono de la derecha para copiarlo):")
-        st.code(asunto(fecha), language=None)
         st.html(f'<div style="background:#fff;border-top:1px dashed #cfd8d6;padding-top:12px;overflow-x:auto">'
-                f'<div id="podex-correo-seguimiento">{cuerpo}</div></div>')
+                f'{cuerpo}</div>')
         st.caption("✈ envía el correo desde PODEX (con vista previa y el diseño del correo de backlog). "
-                   "⧉ copia esta versión con formato para pegarla en Outlook con Ctrl+V. "
                    "Colores de STATUS: amarillo = In Progress / Work In Progress · verde = Pending Customer · "
                    "naranja = Pending Vendor · azul = Open · gris = Suspended.")
