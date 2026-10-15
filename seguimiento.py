@@ -414,21 +414,11 @@ def reporte_seguimiento(usuario):
 
     ahora = datetime.now(ZONA).replace(tzinfo=None)
 
-    c1, c2, c3 = st.columns([2.2, 1.2, 1])
-    with c1:
-        seleccion = st.multiselect("Product Owner", pods, default=pods, key="seg_product_owners",
-                                   placeholder="Seleccione uno o varios Product Owner")
-    with c2:
-        destinatario = st.text_input("Destinatario (saludo)", key="seg_destinatario",
-                                     placeholder="Ej: Florinda")
-    with c3:
-        fecha = st.date_input("Fecha del archivo", value=fecha_archivo or ahora.date(),
-                              format="DD/MM/YYYY", key="seg_fecha",
-                              help="Fecha del archivo de Control Operativo. Por defecto, la de la última carga.")
-
-    if not seleccion:
-        st.info("ℹ️ Seleccione al menos un Product Owner.")
-        return
+    # Sin filtros: todos los Product Owner de los POD del usuario, saludo
+    # general y la fecha de la última carga del archivo de Control Operativo.
+    seleccion = pods
+    destinatario = ""
+    fecha = fecha_archivo or ahora.date()
 
     elegidos = {" ".join(str(po).split()).upper() for po in seleccion}
     datos = abiertas[abiertas["PRODUCT_OWNER"].map(lambda po: " ".join(str(po or "").split()).upper()).isin(elegidos)]
