@@ -5,8 +5,8 @@ Cualquier módulo prepara el correo con programar_envio() y hace st.rerun();
 app.py llama a mostrar_envio_pendiente() en cada página, que abre la ventana
 con el correo tal como llegará y los botones para enviarlo o no enviarlo.
 
-Los destinatarios salen de una lista de correo del envío (Administración →
-Listas de correo) o, como en la bienvenida, vienen fijos.
+Los destinatarios salen de la lista del reporte (Administración → Listas de
+correo) o, como en la bienvenida, vienen fijos. No se eligen al enviar.
 """
 
 import html as html_lib
@@ -14,7 +14,7 @@ import html as html_lib
 import streamlit as st
 
 from correo import MARCA_ECOPETROL, enviar_correo, remitente, vista_previa_html
-from listas import ENVIOS, TIPOS, listas_activas, resolver_destinatarios
+from listas import REPORTES, TIPOS, destinatarios_reporte
 from usuarios import encabezado_ventana, ficha
 
 CLAVE = "envio_pendiente"
@@ -24,7 +24,7 @@ def programar_envio(titulo, asunto, texto, html, envio=None, destinatarios=None,
                     adjuntos=(), aviso_ok="Correo enviado"):
     """Deja el correo listo para la vista previa (se abre en el siguiente rerun).
 
-    envio: clave de ENVIOS para elegir los destinatarios de sus listas, o
+    envio: clave de REPORTES (los destinatarios son los de su lista), o
     destinatarios: {"PARA": [...], "CC": [...], "CCO": [...]} fijos.
     adjuntos: [(nombre_archivo, bytes)].
     """
@@ -52,27 +52,15 @@ def ventana_envio(datos):
     destinatarios = datos["destinatarios"]
     nombre_lista = None
     if datos["envio"]:
+        nombre_lista = REPORTES[datos["envio"]]
         try:
-            listas = listas_activas(datos["envio"])
+            destinatarios = destinatarios_reporte(datos["envio"])
         except Exception as e:
-            st.error(f"❌ No fue posible consultar las listas de correo: {e}")
-            listas = None
-        if listas is None or listas.empty:
-            st.warning(f"⚠️ No hay listas de correo activas para «{ENVIOS[datos['envio']]}». "
-                       "El administrador puede crearlas en Administración → Listas de correo.")
+            st.error(f"❌ No fue posible obtener los destinatarios del reporte: {e}")
             destinatarios = None
-        else:
-            id_lista = st.selectbox(
-                "Lista de correo", listas["ID_LISTA"].tolist(),
-                format_func=lambda i: listas.loc[listas["ID_LISTA"] == i, "NOMBRE"].iloc[0],
-                key="envio_lista",
-            )
-            nombre_lista = listas.loc[listas["ID_LISTA"] == id_lista, "NOMBRE"].iloc[0]
-            try:
-                destinatarios = resolver_destinatarios(id_lista)
-            except Exception as e:
-                st.error(f"❌ No fue posible obtener los destinatarios de la lista: {e}")
-                destinatarios = None
+        if destinatarios is not None and not any(destinatarios.values()):
+            st.warning(f"⚠️ «{nombre_lista}» no tiene destinatarios configurados. El administrador "
+                       "puede agregarlos en Administración → Listas de correo.")
 
     destinatarios = destinatarios or {t: [] for t in TIPOS}
     total = sum(len(destinatarios[t]) for t in TIPOS)
@@ -80,7 +68,7 @@ def ventana_envio(datos):
     campos = [("Asunto", f"<b>{html_lib.escape(datos['asunto'])}</b>"),
               ("Envía", html_lib.escape(remitente() or "Sin configurar"))]
     if nombre_lista:
-        campos.append(("Lista de correo", html_lib.escape(nombre_lista)))
+        campos.append(("Lista de destinatarios", html_lib.escape(nombre_lista)))
     campos += [("Para", _chips(destinatarios["PARA"])), ("CC", _chips(destinatarios["CC"]))]
     if destinatarios["CCO"]:
         campos.append(("CCO (copia oculta)", f"{len(destinatarios['CCO'])} destinatario(s)"))
@@ -140,5 +128,4 @@ def mostrar_envio_pendiente():
 
     datos = st.session_state.pop(CLAVE, None)
     if datos:
-        st.session_state.pop("envio_lista", None)
         ventana_envio(datos)
