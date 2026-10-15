@@ -1,6 +1,8 @@
 """
-Correos de PODEX: bienvenida a los usuarios nuevos (plantilla PODEX) y
-backlog de cada carga de solicitudes a los usuarios Operador activos.
+Correos de PODEX, todos con el diseño del correo de backlog (marca Ecopetrol):
+bienvenida a los usuarios nuevos, backlog de cada carga de solicitudes y
+seguimiento de solicitudes abiertas (el cuerpo de este último se arma en
+seguimiento.py). Antes de enviarse pasan por la vista previa de envios.py.
 
 Se usa un servidor SMTP configurado en los secretos de Streamlit:
 
@@ -23,6 +25,8 @@ from email.mime.text import MIMEText
 from email.utils import formataddr, parseaddr
 from html import escape
 from pathlib import Path
+
+import base64
 
 import streamlit as st
 
@@ -99,9 +103,10 @@ def _paso(numero, texto):
     )
 
 
-def _plantilla(titulo, cuerpo, ancho=600, marca=MARCA_PODEX):
+def _plantilla(titulo, cuerpo, ancho=600, marca=MARCA_PODEX, subtitulo=None):
     """Estructura común de los correos: franja de colores, logo, título,
-    cuerpo y pie con la marca recibida (PODEX por defecto)."""
+    subtítulo (el de la marca si no se indica otro), cuerpo y pie con la
+    marca recibida (PODEX por defecto)."""
     anio = datetime.now().year
     copyright = f"© {anio} {marca['copyright']}".strip()
     return f"""<!DOCTYPE html>
@@ -117,7 +122,7 @@ def _plantilla(titulo, cuerpo, ancho=600, marca=MARCA_PODEX):
   </td></tr>
   <tr><td align="center" style="padding:0 24px 22px;">
     <div style="color:{VERDE_OSCURO};font-size:22px;font-weight:800;">{titulo}</div>
-    <div style="color:{GRIS_TEXTO};font-size:12px;margin-top:4px;">{marca['subtitulo']}</div>
+    <div style="color:{GRIS_TEXTO};font-size:12px;margin-top:4px;">{subtitulo or marca['subtitulo']}</div>
   </td></tr>
 
 {cuerpo}  <tr><td style="background:{VERDE_OSCURO};padding:16px 24px;" align="center">
@@ -196,58 +201,42 @@ Este es un mensaje automático, por favor no responda a este correo.
         _paso(4, "Al terminar, cierre la sesión con el botón circular de la parte superior derecha."),
     ])
 
+    p = "color:#17342f;font-size:14px;line-height:1.6;margin:0 0 10px;"
     cuerpo = f"""  <tr><td style="padding:0 32px;">
-    <p style="color:#17342f;font-size:15px;line-height:1.6;margin:0 0 6px;">Hola <strong>{escape(nombre)}</strong>,</p>
-    <p style="color:#17342f;font-size:14px;line-height:1.6;margin:0 0 18px;">
-      Se ha creado su cuenta en <strong>{NOMBRE_SISTEMA}</strong>. A continuación encontrará la información
-      necesaria para ingresar al sistema.</p>
+    <p style="{p}">Hola <strong>{escape(nombre)}</strong>,</p>
+    <p style="{p}">Se ha creado su cuenta en <strong>{NOMBRE_SISTEMA}</strong> · {DESCRIPCION_SISTEMA}. A continuación encontrará la información necesaria para ingresar al sistema.</p>
   </td></tr>
 
-  <tr><td style="padding:0 32px 8px;">
-    <div style="border:1px solid #9ec91f;border-radius:8px;box-shadow:inset 0 3px 0 {LIMA};padding:16px 18px 8px;">
-      <div style="color:{VERDE_OSCURO};font-size:15px;font-weight:800;margin-bottom:6px;">Datos de su cuenta</div>
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0">{filas}</table>
-    </div>
+  <tr><td style="padding:4px 32px 0;">{_tarjeta("Datos de su cuenta",
+      f'<table role="presentation" width="100%" cellpadding="0" cellspacing="0">{filas}</table>')}</td></tr>
+  <tr><td height="24" style="height:24px;font-size:0;line-height:0;">&nbsp;</td></tr>
+
+  <tr><td style="padding:0 32px;">{_tarjeta("Procedimiento de acceso",
+      f'<table role="presentation" cellpadding="0" cellspacing="0">{pasos}</table>')}</td></tr>
+
+  <tr><td align="center" style="padding:22px 32px 6px;">
+    <a href="{escape(app_url)}" style="display:inline-block;background:{VERDE_OSCURO};color:#fff;text-decoration:none;
+       font-size:14px;font-weight:700;padding:12px 34px;border-radius:24px;">Ingresar a {NOMBRE_SISTEMA}</a>
   </td></tr>
 
-  <tr><td style="padding:18px 32px 4px;">
-    <div style="color:{VERDE_OSCURO};font-size:15px;font-weight:800;margin-bottom:6px;">Procedimiento de acceso</div>
-    <table role="presentation" cellpadding="0" cellspacing="0">{pasos}</table>
-  </td></tr>
-
-  <tr><td align="center" style="padding:16px 32px 8px;">
-    <a href="{escape(app_url)}" style="display:inline-block;background:{VERDE_APP};background:linear-gradient(90deg,{VERDE_APP},#147b66);
-       color:#fff;text-decoration:none;font-size:14px;font-weight:700;padding:12px 34px;border-radius:24px;">Ingresar a {NOMBRE_SISTEMA}</a>
-  </td></tr>
-
-  <tr><td style="padding:16px 32px 24px;">
-    <div style="background:#fffbea;border:1px solid {AMARILLO};border-radius:8px;padding:12px 16px;color:#5a4a00;font-size:13px;line-height:1.55;">
-      <strong>Recomendaciones de seguridad</strong><br>
-      • No comparta su usuario ni su contraseña.<br>
-      • Si necesita cambiar la contraseña o no puede ingresar, comuníquese con el administrador del sistema.
-    </div>
+  <tr><td style="padding:18px 32px 28px;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="#fffbea"
+           style="border-collapse:separate;background:#fffbea;border:1px solid {AMARILLO};border-radius:8px;">
+      <tr><td style="padding:12px 16px 6px;">
+        <div style="color:{VERDE_OSCURO};font-size:14px;font-weight:800;margin:0 0 4px;">Recomendaciones de seguridad</div>
+        {_vinetas([
+            "No comparta su usuario ni su contraseña.",
+            "Si necesita cambiar la contraseña o no puede ingresar, comuníquese con el administrador del sistema.",
+        ])}
+      </td></tr>
+    </table>
   </td></tr>
 
 """
-    html = _plantilla(f"¡Bienvenido a {NOMBRE_SISTEMA}!", cuerpo)
+    html = _plantilla(f"¡Bienvenido a {NOMBRE_SISTEMA}!", cuerpo, ancho=900, marca=MARCA_ECOPETROL,
+                      subtitulo=f"{NOMBRE_SISTEMA} · {DESCRIPCION_SISTEMA}")
 
     return asunto, texto, html
-
-
-def enviar_correo_bienvenida(nombre, usuario, correo, perfil, pods, contrasena,
-                             descripcion_perfil=None):
-    """Envía el correo de bienvenida. Lanza una excepción si no es posible."""
-    config = configuracion_correo()
-    if config is None:
-        raise RuntimeError("Falta configurar la sección [email] en los secretos de la aplicación.")
-
-    app_url = config.get("app_url") or APP_URL_DEFECTO
-    asunto, texto, html = construir_correo_bienvenida(
-        nombre, usuario, correo, perfil, pods, contrasena, app_url, descripcion_perfil
-    )
-
-    with _servidor_smtp(config) as servidor:
-        servidor.send_message(_armar_mensaje(config, correo, asunto, texto, html))
 
 
 def _armar_mensaje(config, destinatario, asunto, texto, html, marca=MARCA_PODEX):
@@ -493,44 +482,71 @@ def construir_correo_backlog(resumen):
     return asunto, texto, html
 
 
-def enviar_correo_backlog(correos, resumen, archivo_bytes):
-    """Envía UN solo correo de backlog con el Excel adjunto a todos los
-    correos recibidos. Van en copia oculta (CCO) para no exponer las
-    direcciones entre sí; el destinatario visible es la cuenta de PODEX.
-    Devuelve el número de destinatarios."""
+# ============================================================
+# ENVÍO Y VISTA PREVIA (comunes a todos los correos)
+# ============================================================
+def remitente():
+    """Remitente configurado ("PODEX <cuenta@...>") o None si no hay correo configurado."""
+    config = configuracion_correo()
+    if config is None:
+        return None
+    return config.get("remitente") or formataddr((NOMBRE_SISTEMA, config["usuario"]))
+
+
+def vista_previa_html(html, marca=MARCA_ECOPETROL):
+    """El HTML del correo con el logo incrustado, para mostrarlo en pantalla
+    (en el correo real el logo va como imagen adjunta cid:)."""
+    if marca["logo"].exists():
+        datos = base64.b64encode(marca["logo"].read_bytes()).decode()
+        html = html.replace(f"cid:{marca['cid']}", f"data:image/png;base64,{datos}")
+    return html
+
+
+def enviar_correo(asunto, texto, html, para=(), cc=(), cco=(), adjuntos=(), marca=MARCA_ECOPETROL):
+    """Envía UN correo con el diseño de PODEX.
+
+    para, cc, cco: listas de correos (CCO no se muestra a los demás). Si no
+    hay destinatarios Para, el visible es la propia cuenta de PODEX.
+    adjuntos: [(nombre_archivo, bytes)]. Devuelve el número de destinatarios.
+    """
     config = configuracion_correo()
     if config is None:
         raise RuntimeError("Falta configurar la sección [email] en los secretos de la aplicación.")
 
-    correos = sorted({c.strip().lower() for c in correos if c and c.strip()})
-    if not correos:
-        return 0
+    def limpiar(correos):
+        return [c.strip() for c in correos if c and c.strip()]
 
-    asunto, texto, html = construir_correo_backlog(resumen)
+    para, cc, cco = limpiar(para), limpiar(cc), limpiar(cco)
+    if not (para or cc or cco):
+        raise ValueError("El correo no tiene destinatarios.")
 
-    remitente = config.get("remitente") or formataddr((NOMBRE_SISTEMA, config["usuario"]))
-    _, correo_rem = parseaddr(remitente)
+    _, correo_rem = parseaddr(remitente())
+    cuerpo = _armar_mensaje(config, ", ".join(para) or correo_rem or config["usuario"],
+                            asunto, texto, html, marca=marca)
 
-    # mixed = [related (texto/HTML + logo incrustado), Excel adjunto]
-    cuerpo = _armar_mensaje(config, correo_rem or config["usuario"], asunto, texto, html,
-                            marca=MARCA_ECOPETROL)
-    mensaje = MIMEMultipart("mixed")
-    for encabezado in ("Subject", "From", "To"):
-        mensaje[encabezado] = cuerpo[encabezado]
-        del cuerpo[encabezado]
-    mensaje["Bcc"] = ", ".join(correos)
-    mensaje.attach(cuerpo)
+    if adjuntos:
+        # mixed = [related (texto/HTML + logo incrustado), adjuntos]
+        mensaje = MIMEMultipart("mixed")
+        for encabezado in ("Subject", "From", "To"):
+            mensaje[encabezado] = cuerpo[encabezado]
+            del cuerpo[encabezado]
+        mensaje.attach(cuerpo)
+        for nombre, contenido in adjuntos:
+            subtipo = ("vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                       if nombre.lower().endswith(".xlsx") else "octet-stream")
+            adjunto = MIMEApplication(contenido, _subtype=subtipo)
+            adjunto.add_header("Content-Disposition", "attachment", filename=nombre)
+            mensaje.attach(adjunto)
+    else:
+        mensaje = cuerpo
 
-    adjunto = MIMEApplication(
-        archivo_bytes,
-        _subtype="vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
-    adjunto.add_header("Content-Disposition", "attachment",
-                       filename=resumen["archivo"])
-    mensaje.attach(adjunto)
+    if cc:
+        mensaje["Cc"] = ", ".join(cc)
+    if cco:
+        mensaje["Bcc"] = ", ".join(cco)
 
-    # send_message() envía a To + Bcc y no incluye el encabezado Bcc en el mensaje.
+    # send_message() envía a To + Cc + Bcc y no incluye el encabezado Bcc en el mensaje.
     with _servidor_smtp(config) as servidor:
         servidor.send_message(mensaje)
 
-    return len(correos)
+    return len(set(c.lower() for c in para + cc + cco))

@@ -213,6 +213,91 @@ def correo_html(filas, product_owners, destinatario, fecha, ahora):
     return "".join(partes)
 
 
+# Etiqueta de STATUS en el correo enviado desde PODEX (paleta del sistema):
+# (fondo, texto).
+ETIQUETAS_STATUS = {
+    "IN PROGRESS": ("#CCD32A", "#17342f"),
+    "WORK IN PROGRESS": ("#CCD32A", "#17342f"),
+    "PENDING CUSTOMER": ("#F7DB17", "#17342f"),
+    "PENDING VENDOR": ("#FF5F00", "#ffffff"),
+    "OPEN": ("#2f6db5", "#ffffff"),
+    "SUSPENDED": ("#C3C5C6", "#17342f"),
+}
+
+
+def correo_para_enviar(filas, product_owners, destinatario, fecha, ahora):
+    """(asunto, texto, html) del seguimiento con el diseño del correo de
+    backlog: marca Ecopetrol, tarjetas por sección y la paleta del sistema."""
+    from correo import MARCA_ECOPETROL, _plantilla, _tarjeta, _vinetas
+
+    p = "color:#17342f;font-size:14px;line-height:1.6;margin:0 0 10px;"
+    celda = ("font-family:'Segoe UI',Arial,sans-serif;font-size:11px;color:#17342f;padding:6px 7px;"
+             "border-bottom:1px solid #e0e5e5;vertical-align:top;")
+    encabezado = (celda + "background:#f4f5f7;color:#5f6d69;font-size:10px;font-weight:700;"
+                  "text-transform:uppercase;letter-spacing:.3px;")
+    etiqueta = "display:inline-block;padding:2px 6px;border-radius:4px;font-weight:700;white-space:nowrap;"
+
+    saludo = (f"{html.escape(destinatario.strip())}, {_saludo(ahora)}:" if destinatario.strip()
+              else f"{_saludo(ahora).capitalize()}:")
+    tarjetas, texto_tablas = [], []
+    for origen, titulo in SECCIONES.items():
+        filas_seccion = [f for f in filas if f["ORIGEN"] == origen]
+        if not filas_seccion:
+            if origen == "DETALLE_GENERAL":
+                tarjetas.append(_tarjeta(titulo.title(), f'<p style="{p}">Sin solicitudes abiertas.</p>'))
+            continue
+        tabla = ['<table role="presentation" width="100%" cellpadding="0" cellspacing="0" '
+                 'style="border-collapse:collapse;"><tr>']
+        tabla += [f'<td style="{encabezado}">{c}</td>' for c in
+                  ["Solicitud", "Categoría", "Status", "Apertura", "Rango", "Subservicio",
+                   "Product Owner", "# Días", "Última gestión"]]
+        tabla.append("</tr>")
+        for f in filas_seccion:
+            fondo, color = ETIQUETAS_STATUS.get(f["STATUS"].upper(), ("#eef4e6", "#17342f"))
+            dias = f["# DÍAS"]
+            fondo_dias, color_dias = (("#F7DB17", "#17342f") if dias is not None and dias <= 5
+                                      else ("#FF5F00", "#ffffff"))
+            obs = (f'<strong>{f["FECHA_OBS"]}:</strong> {html.escape(f["OBSERVACIÓN"])}' if f["OBSERVACIÓN"]
+                   else '<em style="color:#5f6d69;">Sin gestión registrada</em>')
+            tabla.append(
+                "<tr>"
+                f'<td style="{celda}width:18%;">{html.escape(f["SOLICITUD"])}</td>'
+                f'<td style="{celda}width:12%;">{html.escape(f["CATEGORIA"])}</td>'
+                f'<td style="{celda}"><span style="{etiqueta}background:{fondo};color:{color};">'
+                f'{html.escape(f["STATUS"])}</span></td>'
+                f'<td style="{celda}white-space:nowrap;">{f["FECHA_APERTURA"]}</td>'
+                f'<td style="{celda}white-space:nowrap;">{html.escape(f["RANGO_TIEMPO"])}</td>'
+                f'<td style="{celda}">{html.escape(f["SUBSERVICIO_AFECTADO"])}</td>'
+                f'<td style="{celda}">{html.escape(f["PRODUCT_OWNER"])}</td>'
+                f'<td style="{celda}text-align:center;">' + ("" if dias is None else
+                    f'<span style="{etiqueta}background:{fondo_dias};color:{color_dias};">{dias}</span>') + "</td>"
+                f'<td style="{celda}width:28%;">{obs}</td>'
+                "</tr>"
+            )
+            texto_tablas.append(f'  - {f["SOLICITUD"]} | {f["STATUS"]} | {dias} días | '
+                                f'{f["OBSERVACIÓN"] or "Sin gestión registrada"}')
+        tabla.append("</table>")
+        tarjetas.append(_tarjeta(titulo.title(), "".join(tabla)))
+
+    nombres = [_nombre_propio(po) for po in product_owners]
+    separador = '<tr><td height="24" style="height:24px;font-size:0;line-height:0;">&nbsp;</td></tr>'
+    cuerpo = f"""  <tr><td style="padding:0 32px;">
+    <p style="{p}">{saludo}</p>
+    <p style="{p}">Envío el estado actual del seguimiento a las solicitudes de los siguientes Product Owner, de acuerdo con el archivo de Control Operativo suministrado el día <strong>{fecha:%d/%m/%Y}</strong>:</p>
+    {_vinetas([html.escape(n) for n in nombres])}
+  </td></tr>
+  {separador.join(f'<tr><td style="padding:0 32px;">{t}</td></tr>' for t in tarjetas)}
+  <tr><td height="28" style="height:28px;font-size:0;line-height:0;">&nbsp;</td></tr>
+
+"""
+    html_correo = _plantilla(f"Seguimiento {fecha:%d/%m/%Y}", cuerpo, ancho=900, marca=MARCA_ECOPETROL,
+                             subtitulo="Control Operativo – Seguimiento de solicitudes abiertas")
+    texto = (f"{saludo}\n\nEnvío el estado actual del seguimiento a las solicitudes de los siguientes "
+             f"Product Owner, de acuerdo con el archivo de Control Operativo suministrado el día "
+             f"{fecha:%d/%m/%Y}:\n" + "\n".join(f"  • {n}" for n in nombres) + "\n\n" + "\n".join(texto_tablas) + "\n")
+    return asunto(fecha), texto, html_correo
+
+
 def correo_excel(filas, product_owners, destinatario, fecha, ahora):
     """El mismo seguimiento en Excel: encabezado del correo y una tabla por sección."""
     from openpyxl import Workbook
@@ -369,6 +454,8 @@ def reporte_seguimiento(usuario):
             with st.container(key="acciones_rep_seguimiento", horizontal=True,
                               horizontal_alignment="right", vertical_alignment="center"):
                 boton_copiar()
+                enviar = st.button("", icon=":material/send:", key="btn_ok_rep_enviar_seguimiento",
+                                   help="Enviar por correo (con vista previa)")
                 st.download_button(
                     "",
                     data=correo_excel(filas, seleccion, destinatario, fecha, ahora),
@@ -379,10 +466,24 @@ def reporte_seguimiento(usuario):
                     help="Descargar en Excel",
                 )
 
+        if enviar:
+            from envios import programar_envio  # aquí para evitar la importación circular
+
+            asunto_correo, texto, html_correo = correo_para_enviar(filas, seleccion, destinatario, fecha, ahora)
+            programar_envio(
+                "Seguimiento de solicitudes abiertas", asunto_correo, texto, html_correo,
+                envio="SEGUIMIENTO",
+                adjuntos=[(f"Seguimiento_backlog_{fecha:%d%m%Y}.xlsx",
+                           correo_excel(filas, seleccion, destinatario, fecha, ahora))],
+                aviso_ok="Correo de seguimiento enviado",
+            )
+            st.rerun()
+
         st.markdown("**Asunto** (use el ícono de la derecha para copiarlo):")
         st.code(asunto(fecha), language=None)
         st.html(f'<div style="background:#fff;border-top:1px dashed #cfd8d6;padding-top:12px;overflow-x:auto">'
                 f'<div id="podex-correo-seguimiento">{cuerpo}</div></div>')
-        st.caption("⧉ copia el correo con formato y colores: péguelo en Outlook con Ctrl+V. "
+        st.caption("✈ envía el correo desde PODEX (con vista previa y el diseño del correo de backlog). "
+                   "⧉ copia esta versión con formato para pegarla en Outlook con Ctrl+V. "
                    "Colores de STATUS: amarillo = In Progress / Work In Progress · verde = Pending Customer · "
                    "naranja = Pending Vendor · azul = Open · gris = Suspended.")
