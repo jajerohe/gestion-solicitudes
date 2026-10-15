@@ -412,7 +412,7 @@ st.markdown(f"""
 .podex-barra-logo{{width:240px;height:100%;flex:0 0 240px;background:#fff;display:flex;align-items:center;justify-content:center;
   border-bottom:3px solid #CCD32A;box-sizing:border-box}}
 .podex-barra-logo img{{height:30px;width:auto}}
-.podex-barra-nombre{{color:#fff;font-size:15px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;padding-left:22px;white-space:nowrap}}
+.podex-barra-nombre{{color:#fff;font-size:16px;font-weight:800;letter-spacing:.2px;padding-left:22px;white-space:nowrap}}
 .podex-barra-nombre span{{display:block;color:#cfe3dc;font-size:10px;font-weight:600;letter-spacing:.2px;text-transform:none;margin-top:1px}}
 .podex-barra-acciones{{margin-left:auto;display:flex;align-items:center;gap:12px;padding-right:18px}}
 .podex-barra .podex-user-pill{{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);color:#fff}}
