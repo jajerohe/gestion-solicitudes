@@ -1,5 +1,7 @@
+import base64
 import io
 from datetime import datetime
+from pathlib import Path
 from zoneinfo import ZoneInfo
 
 import pandas as pd
@@ -95,150 +97,151 @@ def obtener_usuario_por_auth_id(auth_user_id):
 
 
 def mostrar_login():
-    """Muestra el inicio de sesión: logo a la izquierda y acceso a la derecha."""
+    """Inicio de sesión: logo PODEX arriba y tarjeta de acceso centrada sobre
+    una mancha gris, con el ícono circular sobre la tarjeta."""
+
+    logo = base64.b64encode(Path("Logo_PODEX_horizontal.png").read_bytes()).decode()
+    # Mancha gris clara detrás de la tarjeta (dos formas superpuestas).
+    mancha = base64.b64encode(
+        b'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 480">'
+        b'<path fill="#EFEFEF" d="M190 20c120-25 230 15 270 85 30 55 110 60 125 150 15 90-50 165-150 185'
+        b'-90 18-150-25-235-10C110 445 30 420 12 330 0 265 45 230 35 165 25 95 90 40 190 20z"/></svg>'
+    ).decode()
 
     st.markdown(
-        """
+        f"""
         <style>
         /* ======================================================
-           PANTALLA DE LOGIN (colores del logo PODEX)
+           PANTALLA DE LOGIN
            ====================================================== */
-        [data-testid="stSidebar"] { display: none !important; }
-        header[data-testid="stHeader"] { display: none !important; }
-        .block-container, [data-testid="stMainBlockContainer"] {
-            padding: 0 !important;
+        [data-testid="stSidebar"] {{ display: none !important; }}
+        header[data-testid="stHeader"] {{ display: none !important; }}
+        html, body, [data-testid="stAppViewContainer"], [data-testid="stMain"] {{ background: #F9F9F9 !important; }}
+        .block-container, [data-testid="stMainBlockContainer"] {{
+            padding: 0 1rem !important;
             max-width: 100% !important;
-        }
+        }}
         /* Los bloques que solo traen estilos no deben ocupar espacio */
-        div[data-testid="stElementContainer"]:has(style) { display: none; }
-        [data-testid="stMainBlockContainer"] [data-testid="stVerticalBlock"] { gap: 0; }
-        [data-testid="stForm"] [data-testid="stVerticalBlock"] { gap: 1rem; }
+        div[data-testid="stElementContainer"]:has(style) {{ display: none; }}
+        [data-testid="stMainBlockContainer"] [data-testid="stVerticalBlock"] {{ gap: 0; }}
 
-        div[data-testid="stHorizontalBlock"]:has(.podex-marca) {
-            gap: 0 !important;
-            min-height: 100vh;
-        }
+        .podex-login-logo {{ text-align: center; padding: 64px 0 0; }}
+        .podex-login-logo img {{ width: 190px; max-width: 60%; height: auto; }}
 
-        /* Panel izquierdo: logo sobre degradado claro */
-        div[data-testid="stColumn"]:has(.podex-marca) {
-            background:
-                radial-gradient(circle at 15% 20%, rgba(183, 213, 31, 0.20), transparent 45%),
-                radial-gradient(circle at 85% 85%, rgba(15, 115, 95, 0.16), transparent 45%),
-                linear-gradient(160deg, #F1F8EC 0%, #E7F3E6 55%, #EEF6DC 100%);
-            border-right: 1px solid #DDE9DA;
-        }
-        div[data-testid="stColumn"]:has(.podex-marca),
-        div[data-testid="stColumn"]:has(.podex-acceso) { min-height: 100vh; }
-        div[data-testid="stColumn"]:has(.podex-marca) > div,
-        div[data-testid="stColumn"]:has(.podex-acceso) > div {
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-        }
-        div[data-testid="stColumn"]:has(.podex-marca) > div { padding: 2rem 3.5rem; }
-        div[data-testid="stColumn"]:has(.podex-acceso) > div { padding: 2rem 1.5rem; }
-
-        div[data-testid="stColumn"]:has(.podex-marca) [data-testid="stElementContainer"],
-        div[data-testid="stColumn"]:has(.podex-marca) [data-testid="stImage"] > div {
-            width: 100% !important;
-        }
-        div[data-testid="stColumn"]:has(.podex-marca) [data-testid="stImage"] img {
-            display: block;
+        /* Zona con la mancha gris y la tarjeta centrada */
+        .st-key-login_zona {{
+            max-width: 600px;
             margin: 0 auto;
-            width: min(320px, 46%) !important;
-            max-width: 100%;
-            height: auto;
-            filter: drop-shadow(0 12px 24px rgba(11, 61, 51, 0.16));
-        }
-
-        /* Panel derecho: acceso */
-        .podex-acceso { text-align: center; }
-        .podex-acceso h3 {
-            color: #0B3D33;
-            font-weight: 700;
-            font-size: 1.75rem !important;
-            margin: 0;
-            padding: 0 0 0.3rem;
-        }
-        .podex-acceso p { color: #5E6E69; font-size: 1.05rem; margin: 0 0 1.4rem; }
-
-        div[data-testid="stColumn"]:has(.podex-acceso) [data-testid="stForm"] {
+            padding: 120px 0 90px;
+            background: url("data:image/svg+xml;base64,{mancha}") center / 100% auto no-repeat;
+        }}
+        .st-key-login_tarjeta {{
+            width: 100%;
+            max-width: 385px;
+            margin: 0 auto;
             background: #FFFFFF;
-            border: 1px solid #E2EBE4;
-            border-radius: 14px;
-            box-shadow: 0 10px 30px rgba(11, 61, 51, 0.08);
-            padding: 1.6rem 1.6rem 1.2rem;
-        }
-        div[data-testid="stForm"] input:focus {
-            border-color: #0F735F !important;
-            box-shadow: 0 0 0 1px #0F735F !important;
-        }
-        div[data-testid="stFormSubmitButton"] button {
-            background: linear-gradient(90deg, #0B5B4D 0%, #0F735F 50%, #7FA82A 100%) !important;
+            border-radius: 6px;
+            box-shadow: 0 4px 18px rgba(0, 0, 0, 0.06);
+            padding: 0 45px 35px;
+            overflow: visible;
+        }}
+        .podex-login-icono {{
+            width: 86px; height: 86px;
+            margin: -43px auto 22px;
+            border-radius: 50%;
+            background: linear-gradient(160deg, #84C800 0%, #076F41 75%);
+            box-shadow: 0 6px 16px rgba(7, 111, 65, 0.25);
+            display: flex; align-items: center; justify-content: center;
+        }}
+        .podex-login-titulo {{
+            text-align: center;
+            color: #111111;
+            font-size: 1.3rem;
+            font-weight: 700;
+            line-height: 1.3;
+            margin: 0 0 26px;
+        }}
+        .st-key-login_tarjeta [data-testid="stForm"] {{ border: none; padding: 0; }}
+        .st-key-login_tarjeta [data-testid="stForm"] [data-testid="stVerticalBlock"] {{ gap: 14px; }}
+        .st-key-login_tarjeta [data-testid="stTextInputRootElement"] {{
+            background: #FFFFFF !important;
+            border: 1px solid #C9C9C9 !important;
+            border-radius: 3px !important;
+        }}
+        .st-key-login_tarjeta [data-testid="stTextInput"] input {{
+            background: #FFFFFF !important;
+            min-height: 40px;
+            padding-left: 18px;
+            font-size: 0.9rem;
+        }}
+        .st-key-login_tarjeta [data-testid="stTextInputRootElement"]:focus-within {{
+            border-color: #076F41 !important;
+            box-shadow: 0 0 0 1px #076F41 !important;
+        }}
+        .st-key-login_tarjeta div[data-testid="stFormSubmitButton"] button {{
+            background: #076F41 !important;
             border: none !important;
             color: #FFFFFF !important;
-            border-radius: 8px !important;
-            min-height: 44px !important;
+            border-radius: 3px !important;
+            min-height: 36px !important;
             font-weight: 700 !important;
-            box-shadow: 0 4px 14px rgba(15, 115, 95, 0.25);
-        }
-        div[data-testid="stFormSubmitButton"] button:hover { filter: brightness(1.07); }
+            margin-top: 2px;
+        }}
+        .st-key-login_tarjeta div[data-testid="stFormSubmitButton"] button:hover {{ background: #05593A !important; }}
+        .st-key-login_tarjeta [data-testid="stAlert"] {{ margin-top: 12px; }}
 
-        .podex-pie {
+        .podex-pie {{
             text-align: center;
-            color: #5E6E69;
-            font-size: 0.83rem;
+            color: #8A8F8D;
+            font-size: 0.78rem;
             line-height: 1.5;
-            margin-top: 1.8rem;
-        }
-        .podex-pie p { margin: 0 0 0.8rem; }
-        .podex-pie b { color: #0B3D33; }
-        .podex-pie .firma { font-size: 0.78rem; letter-spacing: 0.02em; }
+            padding: 0 0 28px;
+        }}
+        .podex-pie b {{ color: #076F41; }}
 
-        @media (max-width: 640px) {
-            div[data-testid="stHorizontalBlock"]:has(.podex-marca),
-            div[data-testid="stColumn"]:has(.podex-marca),
-            div[data-testid="stColumn"]:has(.podex-acceso) { min-height: auto; }
-            div[data-testid="stColumn"]:has(.podex-marca) > div { padding: 2.5rem 1.5rem 2rem; }
-            div[data-testid="stColumn"]:has(.podex-acceso) > div { padding: 2rem 1rem; }
-            div[data-testid="stColumn"]:has(.podex-marca) [data-testid="stImage"] img {
-                width: 46% !important;
-            }
-        }
+        @media (max-width: 640px) {{
+            .podex-login-logo {{ padding-top: 36px; }}
+            .st-key-login_zona {{ padding: 80px 0 50px; background-size: 140% auto; }}
+            .st-key-login_tarjeta {{ padding: 0 24px 28px; }}
+        }}
         </style>
         """,
         unsafe_allow_html=True
     )
 
-    marca, acceso = st.columns(2)
+    st.markdown(
+        f'<div class="podex-login-logo"><img src="data:image/png;base64,{logo}" alt="PODEX"></div>',
+        unsafe_allow_html=True
+    )
 
-    with marca:
-        st.markdown('<div class="podex-marca"></div>', unsafe_allow_html=True)
-        st.image("Logo_PODEX.png", width="stretch")
+    with st.container(key="login_zona"):
+        with st.container(key="login_tarjeta"):
+            st.markdown(
+                """
+                <div class="podex-login-icono">
+                    <svg viewBox="0 0 24 24" width="38" height="38" fill="none" stroke="#FFFFFF"
+                         stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="4.5" y="10.5" width="15" height="10" rx="2" fill="rgba(255,255,255,.18)"/>
+                        <path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/>
+                        <circle cx="12" cy="15.5" r="1.4" fill="#FFFFFF" stroke="none"/>
+                    </svg>
+                </div>
+                <div class="podex-login-titulo">Inicia sesión y accede a la<br>gestión de solicitudes</div>
+                """,
+                unsafe_allow_html=True
+            )
 
-    with acceso:
-        st.markdown(
-            """
-            <div class="podex-acceso">
-                <h3>Bienvenido de nuevo</h3>
-                <p>Ingresa con tus credenciales para continuar</p>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-
-        _, centro, _ = st.columns([0.12, 0.76, 0.12])
-        with centro:
-            with st.form("form_login"):
+            with st.form("form_login", border=False):
                 email = st.text_input(
                     "Correo electrónico",
-                    placeholder="usuario@dominio.com"
+                    placeholder="Correo electrónico",
+                    label_visibility="collapsed"
                 )
                 password = st.text_input(
                     "Contraseña",
                     type="password",
-                    placeholder="Ingrese su contraseña"
+                    placeholder="Contraseña",
+                    label_visibility="collapsed"
                 )
                 ingresar = st.form_submit_button(
                     "Ingresar",
@@ -246,17 +249,19 @@ def mostrar_login():
                     width="stretch"
                 )
 
-        st.markdown(
-            """
-            <div class="podex-pie">
-                <p><b>PODEX</b> · Sistema Integrado de Gestión de Peticiones, Incidentes y Vulnerabilidades<br>
-                Acceso protegido mediante autenticación segura.</p>
-                <p class="firma">Powered by <b>JAJEROHE Systems</b></p>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
+            mensajes = st.container()
 
+    st.markdown(
+        """
+        <div class="podex-pie">
+            <b>PODEX</b> · Sistema Integrado de Gestión de Peticiones, Incidentes y Vulnerabilidades<br>
+            Powered by <b>JAJEROHE Systems</b>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+    with mensajes:
         if ingresar:
             email = email.strip()
 
