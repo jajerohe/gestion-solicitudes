@@ -317,10 +317,17 @@ nombre_actual = st.session_state.get("nombre_actual", "")
 # Perfil Administrador: acceso completo a carga y solicitudes.
 # Perfil Operador: acceso restringido a las solicitudes de sus POD asignados.
 es_administrador = str(perfil_actual or "").strip().lower() == "administrador"
+es_operador = str(perfil_actual or "").strip().lower() == "operador"
 
-# Página activa del menú lateral: "solicitudes", o "cargar", "usuarios",
-# "pods" y "reportes" (solo administrador).
-if "pagina_actual" not in st.session_state or not es_administrador:
+# Página activa del menú lateral: "solicitudes" para todos; "cargar",
+# "usuarios" y "pods" solo para el administrador; "reportes" para el
+# administrador y el operador (cada uno ve sus propios reportes).
+PAGINAS_PERMITIDAS = {"solicitudes"}
+if es_administrador:
+    PAGINAS_PERMITIDAS |= {"cargar", "usuarios", "pods", "reportes"}
+if es_operador:
+    PAGINAS_PERMITIDAS |= {"reportes"}
+if st.session_state.get("pagina_actual") not in PAGINAS_PERMITIDAS:
     st.session_state["pagina_actual"] = "solicitudes"
 pagina_actual = st.session_state["pagina_actual"]
 
@@ -457,7 +464,7 @@ with st.sidebar:
         opciones_menu.append(("cargar", "📥  Cargar solicitudes"))
     mostrar_menu("podex_menu", opciones_menu)
 
-    if es_administrador:
+    if "reportes" in PAGINAS_PERMITIDAS:
         st.markdown('<div class="podex-menu-section">Reportes</div>',unsafe_allow_html=True)
         mostrar_menu("podex_menu_reportes", [("reportes", "📊  Reportes")])
 
@@ -494,10 +501,10 @@ if es_administrador and pagina_actual == "usuarios":
     st.stop()
 
 # ============================================================
-# REPORTES — SOLO ADMINISTRADOR
+# REPORTES — ADMINISTRADOR Y OPERADOR
 # ============================================================
-if es_administrador and pagina_actual == "reportes":
-    mostrar_modulo_reportes()
+if pagina_actual == "reportes":
+    mostrar_modulo_reportes(perfil_actual, usuario_actual)
     st.stop()
 
 # ============================================================
