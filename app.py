@@ -30,7 +30,7 @@ st.set_page_config(
     page_title="PODEX - Sistema de Gestión POD's Extendidos",
     page_icon="📋",
     layout="wide",
-    initial_sidebar_state="collapsed"
+    initial_sidebar_state="expanded"
 )
 
 # ============================================================
@@ -349,10 +349,7 @@ html,body,[data-testid="stAppViewContainer"]{background:var(--bg)!important}
 [data-testid="stAppViewContainer"]>.main{background:var(--bg)!important}
 .block-container{padding:1.05rem 1.45rem 2rem!important;max-width:100%!important}
 section[data-testid="stSidebar"]{background:#fff!important;border-right:1px solid #e1e5e8!important}
-section[data-testid="stSidebar"][aria-expanded="true"]{min-width:235px!important;width:235px!important}
 section[data-testid="stSidebar"]>div{padding:.8rem .8rem 1rem!important}
-.podex-side-brand{padding:4px 7px 13px;border-bottom:1px solid #edf0f1;margin-bottom:10px}
-.podex-side-title{color:var(--dark);font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;margin-top:3px}
 .podex-menu-section{color:#7b8582;font-size:10px;font-weight:800;text-transform:uppercase;margin:16px 7px 6px;letter-spacing:.6px}
 .st-key-podex_menu div[data-testid="stButton"]>button,.st-key-podex_menu_admin div[data-testid="stButton"]>button,.st-key-podex_menu_reportes div[data-testid="stButton"]>button{justify-content:flex-start!important;height:auto!important;min-height:38px!important;padding:9px!important;margin:0!important;border:none!important;border-radius:7px!important;background:transparent!important;color:#40514d!important;font-size:12px!important;font-weight:600!important;box-shadow:none!important}
 .st-key-podex_menu div[data-testid="stButton"]>button:hover,.st-key-podex_menu_admin div[data-testid="stButton"]>button:hover,.st-key-podex_menu_reportes div[data-testid="stButton"]>button:hover{background:#edf6f2!important}
@@ -393,92 +390,177 @@ div[role="dialog"] div[data-testid="stForm"]{border-color:var(--border)!importan
 [class*="st-key-btn_danger_"] div[data-testid="stFormSubmitButton"] button,[class*="st-key-btn_danger_"] div[data-testid="stButton"] button{background:linear-gradient(160deg,#FF5F00,#8a2c00)!important}
 div[data-testid="stButton"]>button{border-radius:6px!important;min-height:27px!important;height:27px!important;padding:0 7px!important;font-size:11px!important;color:var(--dark)!important;border:1px solid #cfe0db!important;background:#f5f9f7!important}div[data-testid="stButton"]>button:hover{background:#e8f2ee!important;border-color:#9fc3b8!important}
 div[data-testid="stFormSubmitButton"]>button{border-radius:6px!important;min-height:32px!important;font-weight:700!important}hr{margin:8px 0!important;border-color:#e3e8e6!important}
-@media(max-width:900px){.block-container{padding:.7rem .75rem 1.5rem!important}section[data-testid="stSidebar"][aria-expanded="true"]{min-width:200px!important;width:200px!important}.podex-topbar{min-height:58px}}
+@media(max-width:900px){.block-container{padding:.7rem .75rem 1.5rem!important}.podex-topbar{min-height:58px}}
 </style>
 """,unsafe_allow_html=True)
 
 # ============================================================
-# MENÚ LATERAL DESPLEGABLE
+# VENTANA: BARRA SUPERIOR FIJA Y MENÚ LATERAL CONTRAÍBLE
 # ============================================================
-# El menú arranca cerrado y se abre con el botón ☰ de la esquina superior
-# izquierda. Se abre flotando sobre el contenido (no lo empuja ni lo
-# encoge) y se cierra al elegir una opción o al hacer clic fuera de él.
-st.markdown("""
+# Esquema tipo Service Manager: una barra fija a todo el ancho (logo, nombre
+# del sistema, usuario y cerrar sesión) y, debajo, el menú lateral siempre
+# visible, que se contrae con « a una franja de solo íconos y se expande con ».
+ALTO_BARRA = 56
+menu_colapsado = st.session_state.get("menu_colapsado", False)
+ANCHO_MENU = 64 if menu_colapsado else 240
+
+st.markdown(f"""
 <style>
-[data-testid="stExpandSidebarButton"]{visibility:visible!important;position:fixed!important;top:29px;left:22px;z-index:1000002;width:40px!important;height:40px!important;border-radius:8px!important;background:linear-gradient(160deg,#CCD32A,#004236)!important;box-shadow:0 2px 6px rgba(0,66,54,.3)!important;display:flex!important;align-items:center;justify-content:center;transition:transform .15s,box-shadow .15s}
-[data-testid="stExpandSidebarButton"]:hover{transform:scale(1.06);box-shadow:0 3px 10px rgba(0,66,54,.4)!important}
-[data-testid="stExpandSidebarButton"] span{display:none!important}
-[data-testid="stExpandSidebarButton"]::before{content:"";width:18px;height:2px;border-radius:2px;background:#fff;box-shadow:0 -6px 0 #fff,0 6px 0 #fff}
-section[data-testid="stSidebar"]{position:fixed!important;top:0;left:0;height:100vh!important;z-index:1000001!important}
-section[data-testid="stSidebar"][aria-expanded="true"]{box-shadow:6px 0 24px rgba(20,45,40,.18)!important}
-[data-testid="stSidebarResizeHandle"]{display:none!important}
-[data-testid="stSidebarCollapseButton"]{display:flex!important}
-.podex-topbar:not(.podex-dialog-header){margin-left:52px}
-/* Los bloques que solo traen estilos o scripts no deben ocupar espacio */
-[data-testid="stMainBlockContainer"] div[data-testid="stElementContainer"]:has(style),
-[data-testid="stMainBlockContainer"] div[data-testid="stElementContainer"]:has(script){display:none}
+/* Barra superior fija */
+.podex-barra{{position:fixed;top:0;left:0;right:0;height:{ALTO_BARRA}px;z-index:1000003;display:flex;align-items:center;
+  background:linear-gradient(90deg,#004236 0%,#0b5b4d 55%,#0f735f 100%);box-shadow:inset 0 -3px 0 #CCD32A,0 2px 8px rgba(0,40,30,.18)}}
+.podex-barra-logo{{width:240px;height:100%;flex:0 0 240px;background:#fff;display:flex;align-items:center;justify-content:center;
+  border-bottom:3px solid #CCD32A;box-sizing:border-box}}
+.podex-barra-logo img{{height:30px;width:auto}}
+.podex-barra-nombre{{color:#fff;font-size:15px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;padding-left:22px;white-space:nowrap}}
+.podex-barra-nombre span{{display:block;color:#cfe3dc;font-size:10px;font-weight:600;letter-spacing:.2px;text-transform:none;margin-top:1px}}
+.podex-barra-acciones{{margin-left:auto;display:flex;align-items:center;gap:12px;padding-right:18px}}
+.podex-barra .podex-user-pill{{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);color:#fff}}
+.podex-barra .podex-logout{{width:34px;height:34px;background:rgba(255,255,255,.14);box-shadow:none}}
+.podex-barra .podex-logout:hover{{background:rgba(255,255,255,.26)}}
+
+/* Menú lateral fijo debajo de la barra */
+section[data-testid="stSidebar"],section[data-testid="stSidebar"][aria-expanded]{{position:fixed!important;top:{ALTO_BARRA}px!important;left:0!important;
+  height:calc(100vh - {ALTO_BARRA}px)!important;width:{ANCHO_MENU}px!important;min-width:{ANCHO_MENU}px!important;max-width:{ANCHO_MENU}px!important;
+  transform:none!important;visibility:visible!important;z-index:1000002!important;background:#f1f3f2!important;border-right:1px solid #dfe5e2!important;
+  box-shadow:none!important;transition:width .15s,min-width .15s}}
+section[data-testid="stSidebar"]>div{{padding:.5rem .55rem 1rem!important}}
+[data-testid="stSidebarHeader"],[data-testid="stSidebarCollapseButton"],[data-testid="stExpandSidebarButton"],
+[data-testid="stSidebarResizeHandle"]{{display:none!important}}
+[data-testid="stSidebarUserContent"]{{padding:0!important}}
+[data-testid="stMain"]{{margin-left:{ANCHO_MENU}px!important;width:calc(100% - {ANCHO_MENU}px)!important;
+  max-width:calc(100% - {ANCHO_MENU}px)!important;transition:margin-left .15s}}
+.block-container{{padding-top:{ALTO_BARRA + 18}px!important}}
+
+/* Botón « / » */
+.st-key-menu_toggle{{display:flex;justify-content:{'center' if menu_colapsado else 'flex-end'}}}
+.st-key-menu_toggle div[data-testid="stButton"]>button{{width:34px!important;height:30px!important;min-height:30px!important;padding:0!important;
+  border:1px solid #cfdcd7!important;border-radius:5px!important;background:#fff!important;color:#0b5b4d!important}}
+.st-key-menu_toggle div[data-testid="stButton"]>button:hover{{background:#e8f2ee!important}}
+
+/* Opciones del menú con ícono */
+[class*="st-key-podex_menu"] div[data-testid="stButton"]>button span[data-testid="stIconMaterial"]{{font-size:19px!important;color:#4d5f5a}}
+[class*="st-key-podex_menu"] div[data-testid="stButton"]>button[kind="primary"] span[data-testid="stIconMaterial"]{{color:#fff}}
+.podex-menu-section{{margin:16px 9px 6px}}
+
+/* Título de la página (debajo de la barra) */
+.podex-titulo-pagina{{color:#0b3d33;font-size:19px;font-weight:800;padding:0 0 8px;margin-bottom:12px;border-bottom:1px solid #cfd8d6}}
 </style>
 """,unsafe_allow_html=True)
-st.html("""
+
+if menu_colapsado:
+    # Franja de solo íconos: un ícono por grupo que abre su panel flotante.
+    st.markdown("""
+<style>
+[class*="st-key-grupo_"]{display:flex;justify-content:center;margin-top:6px}
+[class*="st-key-grupo_"] [data-testid="stPopover"],[class*="st-key-grupo_"] [data-testid="stPopover"]>div{width:44px!important}
+[class*="st-key-grupo_"] button{width:44px!important;height:42px!important;min-height:42px!important;padding:0!important;
+  border:none!important;border-radius:7px!important;background:transparent!important;color:#4d5f5a!important;box-shadow:none!important}
+[class*="st-key-grupo_"] button:hover{background:#e3ece8!important}
+[class*="st-key-grupo_"] button[kind="primary"]{background:linear-gradient(90deg,#0b5b4d,#147b66)!important;color:#fff!important}
+[class*="st-key-grupo_"] button span[data-testid="stIconMaterial"]{font-size:23px!important;margin:0!important}
+[class*="st-key-grupo_"] button div[aria-hidden="true"]{display:none!important}
+/* El panel se abre a la derecha del ícono (Streamlit lo ubica debajo). */
+[data-testid="stPopoverBody"]:has(.podex-panel-titulo){margin-left:51px!important;margin-top:-46px!important;
+  min-width:250px;border:1px solid #dfe5e2;box-shadow:4px 6px 18px rgba(20,45,40,.16)!important}
+.podex-panel-titulo{color:#0b5b4d;font-size:14px;font-weight:800;padding:2px 2px 8px;margin-bottom:4px;border-bottom:1px solid #e3e8e6}
+</style>
+""",unsafe_allow_html=True)
+    # Al elegir una opción del panel, se cierra el panel.
+    st.html("""
 <script>
 (() => {
-    if (window.podexMenuDesplegable) return;
-    window.podexMenuDesplegable = true;
-    const cerrar = () => {
-        const menu = document.querySelector('section[data-testid="stSidebar"]');
-        const boton = document.querySelector('[data-testid="stSidebarCollapseButton"] button');
-        if (menu && menu.getAttribute("aria-expanded") === "true" && boton) boton.click();
-    };
+    if (window.podexPanelMenu) return;
+    window.podexPanelMenu = true;
     document.addEventListener("click", (e) => {
-        const menu = document.querySelector('section[data-testid="stSidebar"]');
-        if (!menu || menu.getAttribute("aria-expanded") !== "true") return;
-        if (e.target.closest('[data-testid="stExpandSidebarButton"]')) return;
-        if (!menu.contains(e.target)) return cerrar();
-        // Opción del menú elegida: cerrar después de que Streamlit la reciba.
-        if (e.target.closest('[class*="st-key-podex_menu"] button')) setTimeout(cerrar, 150);
+        if (!e.target.closest('[data-testid="stPopoverBody"] [class*="st-key-podex_menu"] button')) return;
+        setTimeout(() => {
+            const abierto = document.querySelector('[class*="st-key-grupo_"] button[aria-expanded="true"]');
+            if (abierto) abierto.click();
+        }, 120);
     }, true);
 })();
 </script>
 """, unsafe_allow_javascript=True)
 
-# ============================================================
-# ENCABEZADO DE SESIÓN / SIDEBAR
-# ============================================================
+st.markdown("""
+<style>
+/* Los bloques que solo traen estilos o scripts no deben ocupar espacio */
+[data-testid="stMainBlockContainer"] div[data-testid="stElementContainer"]:has(style),
+[data-testid="stMainBlockContainer"] div[data-testid="stElementContainer"]:has(script),
+[data-testid="stSidebarUserContent"] div[data-testid="stElementContainer"]:has(style){display:none}
+@media(max-width:900px){.podex-barra-nombre span,.podex-barra .podex-user-pill{display:none}}
+@media(max-width:640px){.podex-barra-logo{width:140px;flex-basis:140px}.podex-barra-logo img{height:24px}.podex-barra-nombre{display:none}}
+</style>
+""",unsafe_allow_html=True)
+
+LOGO_BARRA = base64.b64encode(Path("Logo_PODEX_horizontal.png").read_bytes()).decode()
+st.markdown(f"""
+<div class="podex-barra">
+  <div class="podex-barra-logo"><img src="data:image/png;base64,{LOGO_BARRA}" alt="PODEX"></div>
+  <div class="podex-barra-nombre">Sistema Integrado de Gestión<span>Peticiones, Incidentes y Vulnerabilidades</span></div>
+  <div class="podex-barra-acciones">
+    <div class="podex-user-pill">👤 {nombre_actual or usuario_actual} · Usuario: {usuario_actual} · Perfil: {perfil_actual or 'Sin perfil'}</div>
+    <a class="podex-logout" href="?logout=1" target="_self" title="Cerrar sesión" aria-label="Cerrar sesión"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h3a1 1 0 0 1 1 1v3M18 16v3a1 1 0 0 1-1 1h-3"/><path d="M5 4.5 11 3a1 1 0 0 1 1.2 1v16a1 1 0 0 1-1.2 1L5 19.5z" fill="#fff"/><path d="M14.5 12H22M19 9l3 3-3 3"/></svg></a>
+  </div>
+</div>
+""",unsafe_allow_html=True)
+
 with st.sidebar:
-    st.markdown('<div class="podex-side-brand">',unsafe_allow_html=True)
-    st.image("Logo_PODEX.png",width=175)
-    st.markdown('<div class="podex-side-title">Sistema Integrado de Gestión</div></div>',unsafe_allow_html=True)
+    with st.container(key="menu_toggle"):
+        if st.button(
+            "",
+            icon=":material/keyboard_double_arrow_right:" if menu_colapsado else ":material/keyboard_double_arrow_left:",
+            key="btn_menu_toggle",
+            help="Expandir menú" if menu_colapsado else "Contraer menú",
+        ):
+            st.session_state["menu_colapsado"] = not menu_colapsado
+            st.rerun()
+
     def mostrar_menu(clave_menu, opciones_menu):
         with st.container(key=clave_menu):
-            for clave_pagina, etiqueta in opciones_menu:
+            for clave_pagina, icono, etiqueta in opciones_menu:
                 if st.button(
                     etiqueta,
+                    icon=icono,
                     key=f"menu_{clave_pagina}",
                     type="primary" if pagina_actual == clave_pagina else "secondary",
-                    width="stretch"
+                    width="stretch",
                 ):
                     st.session_state["pagina_actual"] = clave_pagina
                     st.rerun()
 
+    # (clave, título, ícono del grupo, clave del contenedor, opciones)
+    grupos = []
     if es_administrador:
-        st.markdown('<div class="podex-menu-section">Administración</div>',unsafe_allow_html=True)
-        mostrar_menu("podex_menu_admin", [("usuarios", "👥  Usuarios"), ("pods", "🧩  POD's"),
-                                           ("listas", "📧  Listas de correo")])
-
-    st.markdown('<div class="podex-menu-section">Operaciones</div>',unsafe_allow_html=True)
-
-    opciones_menu = [("solicitudes", "▣  Solicitudes")]
+        grupos.append(("admin", "Administración", ":material/admin_panel_settings:", "podex_menu_admin", [
+            ("usuarios", ":material/group:", "Usuarios"),
+            ("pods", ":material/hub:", "POD's"),
+            ("listas", ":material/contact_mail:", "Listas de correo"),
+        ]))
+    operaciones = [("solicitudes", ":material/assignment:", "Solicitudes")]
     if es_administrador:
-        opciones_menu.append(("cargar", "📥  Cargar solicitudes"))
-    mostrar_menu("podex_menu", opciones_menu)
-
+        operaciones.append(("cargar", ":material/upload_file:", "Cargar solicitudes"))
+    grupos.append(("operaciones", "Operaciones", ":material/assignment:", "podex_menu", operaciones))
     if "reportes" in PAGINAS_PERMITIDAS:
-        st.markdown('<div class="podex-menu-section">Reportes</div>',unsafe_allow_html=True)
-        mostrar_menu("podex_menu_reportes", [("reportes", "📊  Reportes")])
+        grupos.append(("reportes", "Reportes", ":material/bar_chart:", "podex_menu_reportes", [
+            ("reportes", ":material/bar_chart:", "Reportes"),
+        ]))
+
+    for clave, titulo, icono, clave_menu, opciones in grupos:
+        if menu_colapsado:
+            activo = any(pagina_actual == o[0] for o in opciones)
+            with st.popover("", icon=icono, help=titulo, key=f"grupo_{clave}",
+                            type="primary" if activo else "secondary"):
+                st.markdown(f'<div class="podex-panel-titulo">{titulo}</div>', unsafe_allow_html=True)
+                mostrar_menu(clave_menu, opciones)
+        else:
+            st.markdown(f'<div class="podex-menu-section">{titulo}</div>', unsafe_allow_html=True)
+            mostrar_menu(clave_menu, opciones)
 
 
 # ============================================================
-# ENCABEZADO INTERNO
+# TÍTULO DE LA PÁGINA
 # ============================================================
 TITULOS_PAGINA = {
     "solicitudes": "Gestión de Solicitudes",
@@ -490,13 +572,8 @@ TITULOS_PAGINA = {
 }
 
 st.markdown(f"""
-<div class="podex-topbar"><div><div class="podex-top-title">{TITULOS_PAGINA.get(pagina_actual, 'Gestión de Solicitudes')}</div>
-<div class="podex-top-subtitle">Sistema Integrado de Gestión de Peticiones, Incidentes y Vulnerabilidades · PODEX</div></div>
-<div class="podex-top-actions"><div class="podex-user-pill">👤 {nombre_actual or usuario_actual} · Usuario: {usuario_actual} · Perfil: {perfil_actual or 'Sin perfil'}</div>
-<a class="podex-logout" href="?logout=1" target="_self" title="Cerrar sesión" aria-label="Cerrar sesión"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h3a1 1 0 0 1 1 1v3M18 16v3a1 1 0 0 1-1 1h-3"/><path d="M5 4.5 11 3a1 1 0 0 1 1.2 1v16a1 1 0 0 1-1.2 1L5 19.5z" fill="#fff"/><path d="M14.5 12H22M19 9l3 3-3 3"/></svg></a></div></div>
+<div class="podex-titulo-pagina">{TITULOS_PAGINA.get(pagina_actual, 'Gestión de Solicitudes')}</div>
 """,unsafe_allow_html=True)
-
-st.markdown('<div style="height:8px"></div>',unsafe_allow_html=True)
 
 # Vista previa de un correo preparado en la interacción anterior (envios.py).
 mostrar_envio_pendiente()
