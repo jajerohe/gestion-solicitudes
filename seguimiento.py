@@ -332,7 +332,7 @@ def reporte_seguimiento(usuario):
     with st.container(border=True):
         c_titulo, c_acciones = st.columns([4, 1], vertical_alignment="center")
         with c_titulo:
-            st.markdown('<div class="podex-section-title">✉️ Seguimiento listo para el correo</div>', unsafe_allow_html=True)
+            st.markdown('<div class="podex-section-title">✉️ Seguimiento de solicitudes abiertas</div>', unsafe_allow_html=True)
             st.markdown('<div class="podex-section-caption">Solo solicitudes sin FECHA_CIERRE ni CODIGO_CIERRE · '
                         'Observación = última gestión registrada en PODEX · # DÍAS calculado a hoy.</div>',
                         unsafe_allow_html=True)
