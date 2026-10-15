@@ -12,7 +12,6 @@ Listas de correo) o, como en la bienvenida, vienen fijos.
 import html as html_lib
 
 import streamlit as st
-import streamlit.components.v1 as components
 
 from correo import MARCA_ECOPETROL, enviar_correo, remitente, vista_previa_html
 from listas import ENVIOS, TIPOS, listas_activas, resolver_destinatarios
@@ -92,7 +91,7 @@ def ventana_envio(datos):
         with st.expander(f"Ver los {len(destinatarios['CCO'])} destinatario(s) en copia oculta"):
             st.markdown(_chips(destinatarios["CCO"]), unsafe_allow_html=True)
 
-    components.html(vista_previa_html(datos["html"], MARCA_ECOPETROL), height=560, scrolling=True)
+    st.iframe(vista_previa_html(datos["html"], MARCA_ECOPETROL), height=560)
 
     sin_config = remitente() is None
     if sin_config:

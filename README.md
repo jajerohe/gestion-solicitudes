@@ -13,7 +13,8 @@ Sistema Integrado de Gestión de Peticiones, Incidentes y Vulnerabilidades, en S
 | `reportes.py` | Módulo de Reportes: Auditoría de carga (Administrador) y Seguimiento de solicitudes abiertas (Operador) |
 | `seguimiento.py` | Reporte de seguimiento del backlog para el correo (Operador) |
 | `excel_web.py` | Lectura, vista previa y carga del Excel (`DETALLE_GENERAL`, `DETALLE_FUNCIONALES`) |
-| `correo.py` | Correo de bienvenida a los usuarios nuevos |
+| `correo.py` | Diseño común de los correos (marca Ecopetrol), correo de bienvenida y de backlog, y envío con Para, CC, CCO y adjuntos |
+| `envios.py` | Vista previa de cada correo antes de enviarlo (enviar / no enviar) |
 | `auth.py` | Inicio de sesión con Supabase Auth |
 | `database.py` | Conexión a PostgreSQL |
 
