@@ -184,9 +184,12 @@ def _validar(nombre, destinatarios, operadores, otros_nombres):
     if nombre.upper() in {n.upper() for n in otros_nombres}:
         return f"Ya existe una lista llamada {nombre}.", None
 
+    def texto(valor):
+        return "" if valor is None or pd.isna(valor) else " ".join(str(valor).split())
+
     filas, vistos = [], set()
     for _, f in destinatarios.iterrows():
-        correo = str(f.get("CORREO") or "").strip().lower()
+        correo = texto(f.get("CORREO")).lower()
         if not correo:
             continue
         if not PATRON_CORREO.match(correo):
@@ -195,7 +198,7 @@ def _validar(nombre, destinatarios, operadores, otros_nombres):
             return f"El correo {correo} está repetido.", None
         tipo = f.get("TIPO") if f.get("TIPO") in TIPOS else "PARA"
         vistos.add(correo)
-        nombre_dest = " ".join(str(f.get("NOMBRE") or "").split()) or None
+        nombre_dest = texto(f.get("NOMBRE")) or None
         filas.append((correo, nombre_dest, tipo))
     if operadores in TIPOS:
         filas.append((OPERADORES, NOMBRE_OPERADORES, operadores))
