@@ -384,8 +384,14 @@ def reporte_seguimiento(usuario):
                 "ÚLTIMA GESTIÓN": [f'{f["FECHA_OBS"]}: {f["OBSERVACIÓN"]}' if f["OBSERVACIÓN"]
                                    else "Sin gestión registrada" for f in filas_seccion],
             })
+            # STATUS con su color de fondo (los mismos colores del Excel).
+            estilo = tabla.style.map(
+                lambda v: (f"background-color:#{COLORES_STATUS[str(v).upper()]}"
+                           if str(v).upper() in COLORES_STATUS else ""),
+                subset=["STATUS"],
+            )
             st.dataframe(
-                tabla,
+                estilo,
                 key=f"tabla_seguimiento_{origen}",
                 hide_index=True,
                 width="stretch",
@@ -402,4 +408,6 @@ def reporte_seguimiento(usuario):
                     "ÚLTIMA GESTIÓN": st.column_config.TextColumn("ÚLTIMA GESTIÓN", width=320),
                 },
             )
-        st.caption("✈ envía el correo desde PODEX (con vista previa y el diseño del correo de backlog).")
+        st.caption("✈ envía el correo desde PODEX (con vista previa y el diseño del correo de backlog). "
+                   "Colores de STATUS: amarillo = In Progress / Work In Progress · verde = Pending Customer · "
+                   "naranja = Pending Vendor · azul = Open · gris = Suspended.")
