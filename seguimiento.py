@@ -164,58 +164,6 @@ def asunto(fecha):
     return f"ECOPETROL | Control Operativo – Backlog Diario - Seguimiento {fecha:%d/%m/%Y}"
 
 
-def tablas_html(filas):
-    """Tablas DETALLE GENERAL y GRUPO FUNCIONAL ECOPETROL que se muestran en
-    pantalla (el correo que se envía se arma en correo_para_enviar)."""
-    fuente = "font-family:Calibri,Arial,sans-serif;font-size:11pt;color:#000"
-    celda = "border:1px solid #7f7f7f;padding:2px 4px;vertical-align:top;font-family:Calibri,Arial,sans-serif;font-size:9pt"
-    encabezado = celda + ";background:#d9d9d9;text-align:left;font-weight:normal;word-break:break-all"
-
-    partes = [f'<div style="{fuente}">']
-    for origen, titulo in SECCIONES.items():
-        filas_seccion = [f for f in filas if f["ORIGEN"] == origen]
-        partes.append(f'<p style="margin:16px 0 8px"><b><u>{titulo}</u></b></p>')
-        if not filas_seccion:
-            partes.append('<p style="margin:0">Sin solicitudes abiertas.</p>')
-            continue
-        tabla = ['<table cellspacing="0" cellpadding="0" style="border-collapse:collapse;width:100%;table-layout:fixed"><tr>']
-        tabla += [f'<th style="{encabezado};width:{ancho}%">{c}</th>' for c, ancho in COLUMNAS]
-        tabla.append("</tr>")
-        for f in filas_seccion:
-            color = COLORES_STATUS.get(f["STATUS"].upper())
-            obs = (f'<b>{f["FECHA_OBS"]}:</b> {html.escape(f["OBSERVACIÓN"])}' if f["OBSERVACIÓN"]
-                   else "<i>Sin gestión registrada</i>")
-            tabla.append(
-                "<tr>"
-                f'<td style="{celda}">{html.escape(f["SOLICITUD"])}</td>'
-                f'<td style="{celda}">{html.escape(f["CATEGORIA"])}</td>'
-                f'<td style="{celda}' + (f';background:#{color}' if color else "") + f'">{html.escape(f["STATUS"])}</td>'
-                f'<td style="{celda};text-align:right;white-space:nowrap">{f["FECHA_APERTURA"]}</td>'
-                f'<td style="{celda};white-space:nowrap">{html.escape(f["RANGO_TIEMPO"])}</td>'
-                f'<td style="{celda}">{html.escape(f["SUBSERVICIO_AFECTADO"])}</td>'
-                f'<td style="{celda}">{html.escape(f["PRODUCT_OWNER"])}</td>'
-                f'<td style="{celda};text-align:right">{"" if f["# DÍAS"] is None else f["# DÍAS"]}</td>'
-                f'<td style="{celda}">{obs}</td>'
-                "</tr>"
-            )
-        tabla.append("</table>")
-        partes.append("".join(tabla))
-    partes.append("</div>")
-    return "".join(partes)
-
-
-# Etiqueta de STATUS en el correo enviado desde PODEX (paleta del sistema):
-# (fondo, texto).
-ETIQUETAS_STATUS = {
-    "IN PROGRESS": ("#CCD32A", "#17342f"),
-    "WORK IN PROGRESS": ("#CCD32A", "#17342f"),
-    "PENDING CUSTOMER": ("#F7DB17", "#17342f"),
-    "PENDING VENDOR": ("#FF5F00", "#ffffff"),
-    "OPEN": ("#2f6db5", "#ffffff"),
-    "SUSPENDED": ("#C3C5C6", "#17342f"),
-}
-
-
 def correo_para_enviar(filas, product_owners, destinatario, fecha, ahora):
     """(asunto, texto, html) del seguimiento con el diseño del correo de
     backlog: marca Ecopetrol, tarjetas por sección y la paleta del sistema."""
@@ -380,7 +328,6 @@ def reporte_seguimiento(usuario):
     c.metric("Más de 5 días", sum(1 for x in dias if x > 5))
     d.metric("Sin gestión registrada", sum(1 for f in filas if not f["OBSERVACIÓN"]))
 
-    cuerpo = tablas_html(filas)
 
     with st.container(border=True):
         c_titulo, c_acciones = st.columns([4, 1], vertical_alignment="center")
@@ -417,8 +364,42 @@ def reporte_seguimiento(usuario):
             )
             st.rerun()
 
-        st.html(f'<div style="background:#fff;border-top:1px dashed #cfd8d6;padding-top:12px;overflow-x:auto">'
-                f'{cuerpo}</div>')
-        st.caption("✈ envía el correo desde PODEX (con vista previa y el diseño del correo de backlog). "
-                   "Colores de STATUS: amarillo = In Progress / Work In Progress · verde = Pending Customer · "
-                   "naranja = Pending Vendor · azul = Open · gris = Suspended.")
+        # Misma cuadrícula de Gestión de Solicitudes, con los títulos de columna del correo.
+        for origen, titulo in SECCIONES.items():
+            filas_seccion = [f for f in filas if f["ORIGEN"] == origen]
+            st.markdown(f'<div class="podex-section-title" style="margin-top:14px">{titulo.title()}</div>',
+                        unsafe_allow_html=True)
+            if not filas_seccion:
+                st.caption("Sin solicitudes abiertas.")
+                continue
+            tabla = pd.DataFrame({
+                "SOLICITUD": [f["SOLICITUD"] for f in filas_seccion],
+                "CATEGORÍA": [f["CATEGORIA"] for f in filas_seccion],
+                "STATUS": [f["STATUS"] for f in filas_seccion],
+                "APERTURA": [f["FECHA_APERTURA"] for f in filas_seccion],
+                "RANGO": [f["RANGO_TIEMPO"] for f in filas_seccion],
+                "SUBSERVICIO": [f["SUBSERVICIO_AFECTADO"] for f in filas_seccion],
+                "PRODUCT OWNER": [f["PRODUCT_OWNER"] for f in filas_seccion],
+                "# DÍAS": [f["# DÍAS"] for f in filas_seccion],
+                "ÚLTIMA GESTIÓN": [f'{f["FECHA_OBS"]}: {f["OBSERVACIÓN"]}' if f["OBSERVACIÓN"]
+                                   else "Sin gestión registrada" for f in filas_seccion],
+            })
+            st.dataframe(
+                tabla,
+                key=f"tabla_seguimiento_{origen}",
+                hide_index=True,
+                width="stretch",
+                height=min(38 + 35 * len(tabla), 640),
+                column_config={
+                    "SOLICITUD": st.column_config.TextColumn("SOLICITUD", width=220),
+                    "CATEGORÍA": st.column_config.TextColumn("CATEGORÍA", width=140),
+                    "STATUS": st.column_config.TextColumn("STATUS", width=115),
+                    "APERTURA": st.column_config.TextColumn("APERTURA", width=105),
+                    "RANGO": st.column_config.TextColumn("RANGO", width=70),
+                    "SUBSERVICIO": st.column_config.TextColumn("SUBSERVICIO", width=130),
+                    "PRODUCT OWNER": st.column_config.TextColumn("PRODUCT OWNER", width=190),
+                    "# DÍAS": st.column_config.NumberColumn("# DÍAS", width=55),
+                    "ÚLTIMA GESTIÓN": st.column_config.TextColumn("ÚLTIMA GESTIÓN", width=320),
+                },
+            )
+        st.caption("✈ envía el correo desde PODEX (con vista previa y el diseño del correo de backlog).")
