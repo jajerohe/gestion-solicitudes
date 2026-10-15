@@ -126,7 +126,7 @@ def mostrar_login():
         [data-testid="stMainBlockContainer"] [data-testid="stVerticalBlock"] {{ gap: 0; }}
 
         .podex-login-logo {{ text-align: center; padding: 64px 0 0; }}
-        .podex-login-logo img {{ width: 190px; max-width: 60%; height: auto; }}
+        .podex-login-logo img {{ width: 150px; max-width: 50%; height: auto; }}
 
         /* Zona con la mancha gris y la tarjeta centrada */
         .st-key-login_zona {{
