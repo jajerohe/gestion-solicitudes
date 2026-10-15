@@ -16,6 +16,7 @@ from usuarios import (
 )
 from correo import configuracion_correo, enviar_correo_backlog, nombre_backlog
 from pods import mostrar_modulo_pods
+from listas import mostrar_modulo_listas
 from reportes import mostrar_modulo_reportes
 
 # Tiempo máximo (segundos) que se reutilizan los datos consultados entre
@@ -324,7 +325,7 @@ es_operador = str(perfil_actual or "").strip().lower() == "operador"
 # administrador y el operador (cada uno ve sus propios reportes).
 PAGINAS_PERMITIDAS = {"solicitudes"}
 if es_administrador:
-    PAGINAS_PERMITIDAS |= {"cargar", "usuarios", "pods", "reportes"}
+    PAGINAS_PERMITIDAS |= {"cargar", "usuarios", "pods", "listas", "reportes"}
 if es_operador:
     PAGINAS_PERMITIDAS |= {"reportes"}
 if st.session_state.get("pagina_actual") not in PAGINAS_PERMITIDAS:
@@ -374,16 +375,16 @@ div[role="dialog"] div[data-testid="stForm"]{border-color:var(--border)!importan
 [class*="st-key-acciones_"] div[data-testid="stButton"] button:hover,[class*="st-key-acciones_"] div[data-testid="stFormSubmitButton"] button:hover,[class*="st-key-acciones_"] div[data-testid="stDownloadButton"] button:hover{transform:scale(1.08);box-shadow:0 3px 10px rgba(20,60,90,.35)!important}
 [class*="st-key-acciones_"] div[data-testid="stButton"] button:disabled,[class*="st-key-acciones_"] div[data-testid="stFormSubmitButton"] button:disabled{opacity:.35;transform:none;box-shadow:none!important}
 [class*="st-key-acciones_"] div[data-testid="stButton"] button span,[class*="st-key-acciones_"] div[data-testid="stFormSubmitButton"] button span,[class*="st-key-acciones_"] div[data-testid="stDownloadButton"] button span{color:#fff!important;font-size:20px!important;margin:0!important}
-.st-key-btn_gestionar div[data-testid="stButton"] button,.st-key-btn_usr_nuevo div[data-testid="stButton"] button,.st-key-btn_cargar div[data-testid="stButton"] button,.st-key-btn_pod_nuevo div[data-testid="stButton"] button{background:linear-gradient(160deg,#CCD32A,#004236)!important}
-.st-key-btn_ver_gestion div[data-testid="stButton"] button,.st-key-btn_rep_descargar div[data-testid="stDownloadButton"] button,.st-key-btn_usr_editar div[data-testid="stButton"] button,.st-key-btn_pod_editar div[data-testid="stButton"] button{background:linear-gradient(160deg,#2f6db5,#00214D)!important}
-.st-key-btn_actualizar div[data-testid="stButton"] button,.st-key-btn_usr_estado div[data-testid="stButton"] button{background:linear-gradient(160deg,#F7DB17,#FF5F00)!important}
+.st-key-btn_gestionar div[data-testid="stButton"] button,.st-key-btn_usr_nuevo div[data-testid="stButton"] button,.st-key-btn_cargar div[data-testid="stButton"] button,.st-key-btn_pod_nuevo div[data-testid="stButton"] button,.st-key-btn_lista_nueva div[data-testid="stButton"] button{background:linear-gradient(160deg,#CCD32A,#004236)!important}
+.st-key-btn_ver_gestion div[data-testid="stButton"] button,.st-key-btn_rep_descargar div[data-testid="stDownloadButton"] button,.st-key-btn_usr_editar div[data-testid="stButton"] button,.st-key-btn_pod_editar div[data-testid="stButton"] button,.st-key-btn_lista_editar div[data-testid="stButton"] button{background:linear-gradient(160deg,#2f6db5,#00214D)!important}
+.st-key-btn_actualizar div[data-testid="stButton"] button,.st-key-btn_usr_estado div[data-testid="stButton"] button,.st-key-btn_lista_estado div[data-testid="stButton"] button{background:linear-gradient(160deg,#F7DB17,#FF5F00)!important}
 .st-key-btn_usr_clave div[data-testid="stButton"] button{background:linear-gradient(160deg,#C3C5C6,#403833)!important}
-.st-key-btn_usr_eliminar div[data-testid="stButton"] button,.st-key-btn_pod_eliminar div[data-testid="stButton"] button{background:linear-gradient(160deg,#FF5F00,#8a2c00)!important}
-[class*="st-key-btn_ok_"] div[data-testid="stFormSubmitButton"] button{background:linear-gradient(160deg,#CCD32A,#004236)!important}
-[class*="st-key-btn_info_"] div[data-testid="stFormSubmitButton"] button{background:linear-gradient(160deg,#2f6db5,#00214D)!important}
-[class*="st-key-btn_warn_"] div[data-testid="stFormSubmitButton"] button{background:linear-gradient(160deg,#F7DB17,#FF5F00)!important}
-[class*="st-key-btn_neutral_"] div[data-testid="stFormSubmitButton"] button,[class*="st-key-btn_cancel_"] div[data-testid="stFormSubmitButton"] button{background:linear-gradient(160deg,#C3C5C6,#403833)!important}
-[class*="st-key-btn_danger_"] div[data-testid="stFormSubmitButton"] button{background:linear-gradient(160deg,#FF5F00,#8a2c00)!important}
+.st-key-btn_usr_eliminar div[data-testid="stButton"] button,.st-key-btn_pod_eliminar div[data-testid="stButton"] button,.st-key-btn_lista_eliminar div[data-testid="stButton"] button{background:linear-gradient(160deg,#FF5F00,#8a2c00)!important}
+[class*="st-key-btn_ok_"] div[data-testid="stFormSubmitButton"] button,[class*="st-key-btn_ok_"] div[data-testid="stButton"] button{background:linear-gradient(160deg,#CCD32A,#004236)!important}
+[class*="st-key-btn_info_"] div[data-testid="stFormSubmitButton"] button,[class*="st-key-btn_info_"] div[data-testid="stButton"] button{background:linear-gradient(160deg,#2f6db5,#00214D)!important}
+[class*="st-key-btn_warn_"] div[data-testid="stFormSubmitButton"] button,[class*="st-key-btn_warn_"] div[data-testid="stButton"] button{background:linear-gradient(160deg,#F7DB17,#FF5F00)!important}
+[class*="st-key-btn_neutral_"] div[data-testid="stFormSubmitButton"] button,[class*="st-key-btn_cancel_"] div[data-testid="stFormSubmitButton"] button,[class*="st-key-btn_cancel_"] div[data-testid="stButton"] button{background:linear-gradient(160deg,#C3C5C6,#403833)!important}
+[class*="st-key-btn_danger_"] div[data-testid="stFormSubmitButton"] button,[class*="st-key-btn_danger_"] div[data-testid="stButton"] button{background:linear-gradient(160deg,#FF5F00,#8a2c00)!important}
 div[data-testid="stButton"]>button{border-radius:6px!important;min-height:27px!important;height:27px!important;padding:0 7px!important;font-size:11px!important;color:var(--dark)!important;border:1px solid #cfe0db!important;background:#f5f9f7!important}div[data-testid="stButton"]>button:hover{background:#e8f2ee!important;border-color:#9fc3b8!important}
 div[data-testid="stFormSubmitButton"]>button{border-radius:6px!important;min-height:32px!important;font-weight:700!important}hr{margin:8px 0!important;border-color:#e3e8e6!important}
 @media(max-width:900px){.block-container{padding:.7rem .75rem 1.5rem!important}section[data-testid="stSidebar"][aria-expanded="true"]{min-width:200px!important;width:200px!important}.podex-topbar{min-height:58px}}
@@ -455,7 +456,8 @@ with st.sidebar:
 
     if es_administrador:
         st.markdown('<div class="podex-menu-section">Administración</div>',unsafe_allow_html=True)
-        mostrar_menu("podex_menu_admin", [("usuarios", "👥  Usuarios"), ("pods", "🧩  POD's")])
+        mostrar_menu("podex_menu_admin", [("usuarios", "👥  Usuarios"), ("pods", "🧩  POD's"),
+                                           ("listas", "📧  Listas de correo")])
 
     st.markdown('<div class="podex-menu-section">Operaciones</div>',unsafe_allow_html=True)
 
@@ -477,6 +479,7 @@ TITULOS_PAGINA = {
     "cargar": "Cargar Solicitudes",
     "usuarios": "Administración de Usuarios",
     "pods": "Administración de POD's",
+    "listas": "Listas de correo",
     "reportes": "Reportes",
 }
 
@@ -498,6 +501,10 @@ if es_administrador and pagina_actual == "pods":
 
 if es_administrador and pagina_actual == "usuarios":
     mostrar_modulo_usuarios(usuario_actual)
+    st.stop()
+
+if es_administrador and pagina_actual == "listas":
+    mostrar_modulo_listas(usuario_actual)
     st.stop()
 
 # ============================================================
