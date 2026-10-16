@@ -32,8 +32,8 @@ import streamlit as st
 
 from excel_web import ORDEN_RANGOS, _orden_rango, calcular_tabla_jdu
 
-NOMBRE_SISTEMA = "PODEX"
-DESCRIPCION_SISTEMA = "Sistema Integrado de Gestión de Peticiones, Incidentes y Vulnerabilidades"
+from marca import DESCRIPCION_SISTEMA, NOMBRE_SISTEMA
+
 APP_URL_DEFECTO = "https://podexweb.streamlit.app"
 LOGO = Path(__file__).with_name("Logo_PODEX_correo.png")
 LOGO_ECP = Path(__file__).with_name("Logo_ECP.png")

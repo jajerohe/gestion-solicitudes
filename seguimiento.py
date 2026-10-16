@@ -16,6 +16,7 @@ import pandas as pd
 import streamlit as st
 
 from database import Database
+from marca import NOMBRE_SISTEMA
 
 ZONA = ZoneInfo("America/Bogota")
 
@@ -346,7 +347,7 @@ def reporte_seguimiento(usuario):
         with c_titulo:
             st.markdown('<div class="podex-section-title">✉️ Seguimiento de solicitudes abiertas</div>', unsafe_allow_html=True)
             st.markdown('<div class="podex-section-caption">Solo solicitudes sin FECHA_CIERRE ni CODIGO_CIERRE · '
-                        'Observación = última gestión registrada en PODEX · # DÍAS calculado a hoy.</div>',
+                        f'Observación = última gestión registrada en {html.escape(NOMBRE_SISTEMA)} · # DÍAS calculado a hoy.</div>',
                         unsafe_allow_html=True)
         with c_acciones:
             with st.container(key="acciones_rep_seguimiento", horizontal=True,
@@ -420,6 +421,6 @@ def reporte_seguimiento(usuario):
                     "ÚLTIMA GESTIÓN": st.column_config.TextColumn("ÚLTIMA GESTIÓN", width=320),
                 },
             )
-        st.caption("✈ envía el correo desde PODEX (con vista previa y el diseño del correo de backlog). "
+        st.caption(f"✈ envía el correo desde {NOMBRE_SISTEMA} (con vista previa y el diseño del correo de backlog). "
                    "Colores de STATUS: amarillo = In Progress / Work In Progress · verde = Pending Customer · "
                    "naranja = Pending Vendor · azul = Open · gris = Suspended.")

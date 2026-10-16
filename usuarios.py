@@ -15,12 +15,14 @@ proyecto en los secretos de Streamlit:
 """
 
 import re
+from html import escape
 
 import pandas as pd
 import streamlit as st
 from supabase import create_client, Client
 
 from database import Database
+from marca import DESCRIPCION_SISTEMA, NOMBRE_SISTEMA
 from correo import APP_URL_DEFECTO, configuracion_correo, construir_correo_bienvenida
 
 # Duración usada para desactivar una cuenta en Supabase Auth (~100 años).
@@ -190,7 +192,7 @@ def encabezado_ventana(titulo):
     st.markdown(
         f'''<div class="podex-topbar podex-dialog-header"><div>
         <div class="podex-top-title">{titulo}</div>
-        <div class="podex-top-subtitle">Sistema Integrado de Gestión de Peticiones, Incidentes y Vulnerabilidades · PODEX</div>
+        <div class="podex-top-subtitle">{escape(DESCRIPCION_SISTEMA)} · {escape(NOMBRE_SISTEMA)}</div>
         </div></div>''',
         unsafe_allow_html=True
     )
@@ -518,7 +520,7 @@ def ventana_estado(fila):
     ficha([("Usuario", fila["USUARIO"]), ("Nombre", fila["NOMBRE"]), ("Correo", fila["CORREO"])])
     seccion(
         f"¿Está seguro que desea {accion} este usuario?",
-        None if activar else "Un usuario desactivado no puede iniciar sesión en PODEX. Sus datos y PODs se conservan."
+        None if activar else f"Un usuario desactivado no puede iniciar sesión en {NOMBRE_SISTEMA}. Sus datos y PODs se conservan."
     )
 
     with st.form(f"form_estado_{fila['USUARIO']}"):

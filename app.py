@@ -1,4 +1,5 @@
 import base64
+import html
 import io
 from datetime import datetime
 from pathlib import Path
@@ -21,17 +22,19 @@ from envios import mostrar_envio_pendiente, programar_envio
 from pods import mostrar_modulo_pods
 from listas import mostrar_modulo_listas
 from reportes import mostrar_modulo_reportes
+from marca import DESCRIPCION_SISTEMA, NOMBRE_SISTEMA, TITULO_PESTANA, fijar_titulo_pestana
 
 # Tiempo máximo (segundos) que se reutilizan los datos consultados entre
 # interacciones. Cualquier cambio guardado limpia la caché de inmediato.
 TTL_CACHE = 60
 
 st.set_page_config(
-    page_title="PODEX - Sistema de Gestión POD's Extendidos",
+    page_title=TITULO_PESTANA,
     page_icon="📋",
     layout="wide",
     initial_sidebar_state="expanded"
 )
+fijar_titulo_pestana()
 
 # ============================================================
 # OCULTAR BARRA SUPERIOR NATIVA DE STREAMLIT
@@ -213,14 +216,14 @@ def mostrar_login():
     )
 
     st.markdown(
-        f'<div class="podex-login-logo"><img src="data:image/png;base64,{logo}" alt="PODEX"></div>',
+        f'<div class="podex-login-logo"><img src="data:image/png;base64,{logo}" alt="{html.escape(NOMBRE_SISTEMA)}"></div>',
         unsafe_allow_html=True
     )
 
     with st.container(key="login_zona"):
         with st.container(key="login_tarjeta"):
             st.markdown(
-                """
+                f"""
                 <div class="podex-login-icono">
                     <svg viewBox="0 0 24 24" width="38" height="38" fill="none" stroke="#FFFFFF"
                          stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -229,7 +232,7 @@ def mostrar_login():
                         <circle cx="12" cy="15.5" r="1.4" fill="#FFFFFF" stroke="none"/>
                     </svg>
                 </div>
-                <div class="podex-login-titulo">Inicia sesión y accede a<br>PODEX</div>
+                <div class="podex-login-titulo">Inicia sesión y accede a<br>{html.escape(NOMBRE_SISTEMA)}</div>
                 """,
                 unsafe_allow_html=True
             )
@@ -255,9 +258,9 @@ def mostrar_login():
             mensajes = st.container()
 
     st.markdown(
-        """
+        f"""
         <div class="podex-pie">
-            <b>PODEX</b> · Sistema Integrado de Gestión de Peticiones, Incidentes y Vulnerabilidades<br>
+            <b>{html.escape(NOMBRE_SISTEMA)}</b> · {html.escape(DESCRIPCION_SISTEMA)}<br>
             Powered by <b>JAJEROHE Systems</b>
         </div>
         """,
@@ -287,7 +290,7 @@ def mostrar_login():
                     cerrar_sesion()
                     st.error(
                         "❌ El usuario está autenticado en Supabase, "
-                        "pero no está registrado en PODEX."
+                        f"pero no está registrado en {NOMBRE_SISTEMA}."
                     )
                     return
 
@@ -500,7 +503,7 @@ st.markdown("""
 LOGO_BARRA = base64.b64encode(Path("Logo_PODEX_horizontal.png").read_bytes()).decode()
 st.markdown(f"""
 <div class="podex-barra">
-  <div class="podex-barra-logo"><img src="data:image/png;base64,{LOGO_BARRA}" alt="PODEX"></div>
+  <div class="podex-barra-logo"><img src="data:image/png;base64,{LOGO_BARRA}" alt="{html.escape(NOMBRE_SISTEMA)}"></div>
   <div class="podex-barra-nombre">Sistema Integrado de Gestión<span>Peticiones, Incidentes y Vulnerabilidades</span></div>
   <div class="podex-barra-acciones">
     <div class="podex-user-pill">👤 {nombre_actual or usuario_actual} · Usuario: {usuario_actual} · Perfil: {perfil_actual or 'Sin perfil'}</div>
@@ -611,7 +614,7 @@ archivo_excel = None
 if es_administrador and pagina_actual == "cargar":
     with st.container(border=True):
         st.markdown('<div class="podex-section-title">📥 Cargar solicitudes desde Excel</div>',unsafe_allow_html=True)
-        st.markdown('<div class="podex-section-caption">Seleccione el archivo de origen para analizar y cargar las solicitudes en PODEX.</div>',unsafe_allow_html=True)
+        st.markdown(f'<div class="podex-section-caption">Seleccione el archivo de origen para analizar y cargar las solicitudes en {html.escape(NOMBRE_SISTEMA)}.</div>',unsafe_allow_html=True)
         archivo_excel=st.file_uploader(
             "Seleccione un archivo Excel",
             type=["xlsx"],
