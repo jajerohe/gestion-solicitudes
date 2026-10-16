@@ -229,7 +229,7 @@ def mostrar_login():
                         <circle cx="12" cy="15.5" r="1.4" fill="#FFFFFF" stroke="none"/>
                     </svg>
                 </div>
-                <div class="podex-login-titulo">Inicia sesión y accede a la<br>gestión de solicitudes</div>
+                <div class="podex-login-titulo">Inicia sesión y accede a<br>PODEX</div>
                 """,
                 unsafe_allow_html=True
             )
