@@ -125,14 +125,18 @@ def mostrar_login():
         div[data-testid="stElementContainer"]:has(style) {{ display: none; }}
         [data-testid="stMainBlockContainer"] [data-testid="stVerticalBlock"] {{ gap: 0; }}
 
-        .podex-login-logo {{ text-align: center; padding: 64px 0 0; }}
+        /* Logo, tarjeta y pie centrados, con los mismos espacios en todos los sistemas */
+        [data-testid="stMainBlockContainer"] > [data-testid="stVerticalBlock"] {{
+            min-height: 100vh; justify-content: center; padding: 32px 0;
+        }}
+        .podex-login-logo {{ text-align: center; padding: 0; line-height: 0; }}
         .podex-login-logo img {{ width: 150px; max-width: 50%; height: auto; }}
 
         /* Zona con la mancha gris y la tarjeta centrada */
         .st-key-login_zona {{
             max-width: 600px;
             margin: 0 auto;
-            padding: 120px 0 90px;
+            padding: 110px 0 96px;
             background: url("data:image/svg+xml;base64,{mancha}") center / 100% auto no-repeat;
         }}
         .st-key-login_tarjeta {{
@@ -195,13 +199,12 @@ def mostrar_login():
             color: #8A8F8D;
             font-size: 0.78rem;
             line-height: 1.5;
-            padding: 0 0 28px;
+            padding: 0;
         }}
         .podex-pie b {{ color: #076F41; }}
 
         @media (max-width: 640px) {{
-            .podex-login-logo {{ padding-top: 36px; }}
-            .st-key-login_zona {{ padding: 80px 0 50px; background-size: 140% auto; }}
+            .st-key-login_zona {{ padding: 90px 0 64px; background-size: 140% auto; }}
             .st-key-login_tarjeta {{ padding: 0 24px 28px; }}
         }}
         </style>
